@@ -52,6 +52,27 @@ bool D3DContext::Initialize(HWND hWnd, int width, int height) {
 
     return true;
 }
+// D3DContext.cpp
+bool D3DContext::Resize(int width, int height) {
+    if (!m_pSwapChain) return false;
+
+    // 1. 必须先释放掉所有引用了旧后台缓冲区的视图
+    m_pRenderTargetView.Reset();
+
+    // 2. 调整交换链缓冲区大小（参数 1 是缓冲区数量，0 表示保持格式不变）
+    HRESULT hr = m_pSwapChain->ResizeBuffers(1, width, height, DXGI_FORMAT_B8G8R8A8_UNORM, 0);
+    if (FAILED(hr)) return false;
+
+    // 3. 重新从交换链获取“画布”并创建新的渲染目标视图 (RTV)
+    ComPtr<ID3D11Texture2D> pBackBuffer;
+    hr = m_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+    if (FAILED(hr)) return false;
+
+    hr = m_pd3dDevice->CreateRenderTargetView(pBackBuffer.Get(), nullptr, &m_pRenderTargetView);
+    if (FAILED(hr)) return false;
+
+    return true;
+}
 
 void D3DContext::Clear(float r, float g, float b, float a) {
     float clearColor[] = { r, g, b, a };

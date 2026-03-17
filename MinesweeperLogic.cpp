@@ -103,12 +103,26 @@ void MinesweeperLogic::FloodFill(int x, int y) {
 
 void MinesweeperLogic::ToggleFlag(int x, int y) {
     if (!IsInBounds(x, y) || m_status != GameStatus::Playing) return;
+
     Cell& cell = m_grid[y * m_width + x];
     if (cell.isRevealed) return;
-
-    cell.isFlagged = !cell.isFlagged;
-    if (cell.isFlagged) m_flagsPlaced++;
-    else m_flagsPlaced--;
+    // 状态循环逻辑：
+    if (!cell.isFlagged && !cell.isQuestioned) {
+        // 1. 从“普通”变为“插旗”
+        cell.isFlagged = true;
+        m_flagsPlaced++; // 只有插旗才会计数
+    }
+    else if (cell.isFlagged) {
+        // 2. 从“插旗”变为“问号”
+        cell.isFlagged = false;
+        cell.isQuestioned = true;
+        m_flagsPlaced--; // 取消旗子，计数减一
+    }
+    else if (cell.isQuestioned) {
+        // 3. 从“问号”变回“普通”
+        cell.isQuestioned = false;
+        // 此时 isFlagged 和 isQuestioned 都为 false
+    }
 }
 
 void MinesweeperLogic::TryChord(int x, int y) {

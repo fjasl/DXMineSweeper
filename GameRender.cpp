@@ -62,24 +62,41 @@ void GameRenderer ::DrawBaseFrame(ID3D11DeviceContext* ctx, int width, int heigh
 
 
 void GameRenderer::DrawDigit(ID3D11DeviceContext* context, int value, int x, int y) {
-    if (value < 0 || value > 11) value = 10;
-    m_Sprites.Draw(context, m_TexLed.srv.Get(), (float)x, (float)y, (float)LED_W, (float)LED_H, 0.0f, (float)(value * LED_H), (float)LED_W, (float)LED_H);
+    int imgIdx = 0;
+    if (value == -1) {
+        imgIdx = 0; // 负号
+    }
+    else if (value >= 0 && value <= 9) {
+        imgIdx = 11 - value; // 倒序映射：0->11, 1->10... 9->2
+    }
+    else {
+        imgIdx = 1; // 默认空
+    }
+
+    m_Sprites.Draw(context, m_TexLed.srv.Get(),
+        (float)x, (float)y, (float)LED_W, (float)LED_H,
+        0.0f, (float)(imgIdx * LED_H), (float)LED_W, (float)LED_H);
 }
 
 void GameRenderer::DrawNumber(ID3D11DeviceContext* context, int num, int x, int y) {
+    // 限制范围
     num = (std::max)((std::min)(num, 999), -99);
+
     if (num < 0) {
-        DrawDigit(context, 11, x, y); // Minus
+        // 第一位画负号
+        DrawDigit(context, -1, x, y);
         int absNum = -num;
         DrawDigit(context, (absNum / 10) % 10, x + LED_W, y);
         DrawDigit(context, absNum % 10, x + LED_W * 2, y);
     }
     else {
+        // 正常的三位数逻辑
         DrawDigit(context, (num / 100) % 10, x, y);
         DrawDigit(context, (num / 10) % 10, x + LED_W, y);
         DrawDigit(context, num % 10, x + LED_W * 2, y);
     }
 }
+
 
 
 void GameRenderer::Render(ID3D11DeviceContext* context, HWND hWnd, MinesweeperLogic& logic, int width, int height,int boardW, int boardH) {
@@ -141,31 +158,59 @@ void GameRenderer::Render(ID3D11DeviceContext* context, HWND hWnd, MinesweeperLo
                  }
 
 
+                 // 2. 状态判断优先级树
                  if (cell.isRevealed) {
+                     // A. 已经挖开的情况 (不受鼠标按住影响)
                      if (cell.isMine) {
-                         // 如果是地雷，显示地雷贴图
-                         // cell.isExploded 为 true 表示这是你踩中的那颗（红色背景），否则是普通地雷
+                         // 踩中的雷是红色背景 (BLK_EXPLODED)，其他露出来的雷是灰色背景 (BLK_MINE)
                          blkIdx = cell.isExploded ? BLK_EXPLODED : BLK_MINE;
                      }
                      else {
+                         // 数字逻辑：0 为全平空白块，1-8 为带颜色数字
                          if (cell.neighborMines == 0) {
                              blkIdx = BLK_REVEALED_EMPTY;
                          }
                          else {
+                             // 对应你那张倒序贴图的计算：BLK_1 是 14，减去偏移得到对应数字
                              blkIdx = BLK_1 - (cell.neighborMines - 1);
                          }
                      }
-                    
+                 }
+                 else if (shouldPush && !cell.isFlagged) {
+                     // B. 尚未挖掘，但鼠标正在按着它（预览效果）
+                     // 注意：插了旗的格子不能被按下
+                     if (cell.isQuestioned) {
+                         blkIdx = BLK_QUESTION_PUSHED; // 如果有问号，显示按下态问号 (索引 6)
+                     }
+                     else {
+                         blkIdx = BLK_REVEALED_EMPTY;  // 否则显示凹陷的空白块 (索引 15)
+                     }
                  }
                  else if (cell.isFlagged) {
-                     if (logic.GetStatus() == GameStatus::Lost && !cell.isMine) blkIdx = BLK_WRONG_FLAG;
-                     else blkIdx = BLK_FLAG;
+                     // C. 插了旗的情况
+                     // 如果游戏结束且旗子插错了位置，显示带 X 的雷 (BLK_WRONG_FLAG)
+                     if (logic.GetStatus() == GameStatus::Lost && !cell.isMine) {
+                         blkIdx = BLK_WRONG_FLAG;
+                     }
+                     else {
+                         blkIdx = BLK_FLAG;
+                     }
                  }
                  else if (cell.isQuestioned) {
+                     // D. 问号状态
                      blkIdx = BLK_QUESTION;
                  }
-
-                 m_Sprites.Draw(context, m_TexBlocks.srv.Get(), (float)(OFFSET_X + x * CELL_SIZE), (float)(OFFSET_Y + y * CELL_SIZE), (float)CELL_SIZE, (float)CELL_SIZE, 0.0f, (float)(blkIdx * CELL_SIZE), (float)CELL_SIZE, (float)CELL_SIZE);
+                 else {
+                     // E. 默认状态：凸起的未挖掘格子
+                     blkIdx = BLK_UNTOUCHED;
+                 }
+                 // 3. 执行绘制
+                 m_Sprites.Draw(context, m_TexBlocks.srv.Get(),
+                     (float)(OFFSET_X + x * CELL_SIZE),
+                     (float)(OFFSET_Y + y * CELL_SIZE),
+                     (float)CELL_SIZE, (float)CELL_SIZE,
+                     0.0f, (float)(blkIdx * CELL_SIZE),
+                     (float)CELL_SIZE, (float)CELL_SIZE);
              }
          }
          m_Sprites.End();

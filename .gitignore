@@ -45,3 +45,11 @@
 *.recipe
 *.txt
 .vs/*
+.vs/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.aps
+*.ncb
+*.suo
+*.orig

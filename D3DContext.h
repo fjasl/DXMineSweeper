@@ -10,6 +10,7 @@ public:
     ~D3DContext();
 
     bool Initialize(HWND hWnd, int width, int height);
+    bool Resize(int width, int height); // 添加这一行
     void Clear(float r, float g, float b, float a);
     void Present();
 
