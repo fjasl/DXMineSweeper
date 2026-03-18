@@ -15,6 +15,7 @@
 #include "DebugUI.h"
 #include "AppConfig.h"
 #include "LobbyUI.h"
+#include "SoundManager.h"
 
 
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -98,6 +99,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
    
 
     ShowWindow(hWnd, nCmdShow);
+    UpdateMenuCheck(hWnd);
     UpdateWindow(hWnd);
 
     SetTimer(hWnd, 1, 1000, nullptr);
@@ -124,6 +126,24 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
             ImGui::Render();
             ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
             g_D3D.Present();
+
+            // FPS Cap ———————————————————————————————
+            int fpsCap = g_DebugUI.GetFpsCap();
+            if (fpsCap > 0) {
+                static LARGE_INTEGER s_freq = {};
+                static LARGE_INTEGER s_last = {};
+                if (s_freq.QuadPart == 0) {
+                    QueryPerformanceFrequency(&s_freq);
+                    QueryPerformanceCounter(&s_last);
+                }
+                LARGE_INTEGER now;
+                QueryPerformanceCounter(&now);
+                double targetMs  = 1000.0 / fpsCap;
+                double elapsedMs = (double)(now.QuadPart - s_last.QuadPart) * 1000.0 / s_freq.QuadPart;
+                double sleepMs   = targetMs - elapsedMs;
+                if (sleepMs > 1.0) Sleep((DWORD)(sleepMs - 0.5));
+                QueryPerformanceCounter(&s_last);
+            }
         }
     }
 
@@ -159,12 +179,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         if (mouseX >= faceX && mouseX < faceX + FACE_SIZE && mouseY >= 15 && mouseY < 15 + FACE_SIZE) {
             g_Logic.StartNewGame();
         } else if (gridX >= 0 && gridX < g_Logic.GetWidth() && gridY >= 0 && gridY < g_Logic.GetHeight()) {
-            g_Logic.RevealCell(gridX, gridY);
-         
-            if (g_Logic.GetStatus() == GameStatus::Won) {
-                CheckHighScore(hWnd);
+            if (g_Logic.GetStatus() == GameStatus::Playing) {
+                g_Logic.RevealCell(gridX, gridY);
+
+                if (g_Logic.GetStatus() == GameStatus::Lost) {
+                    PlayGameSound(SoundEvent::Explode);
+                } else if (g_Logic.GetStatus() == GameStatus::Won) {
+                    PlayGameSound(SoundEvent::Win);
+                    CheckHighScore(hWnd);
+                }
             }
-        
         }
         break;
     }
@@ -174,6 +198,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         int gridY = (HIWORD(lParam) - OFFSET_Y) / CELL_SIZE;
         if (gridX >= 0 && gridX < g_Logic.GetWidth() && gridY >= 0 && gridY < g_Logic.GetHeight()) {
             g_Logic.ToggleFlag(gridX, gridY);
+            
         }
         break;
     }
@@ -182,11 +207,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         int gridX = (LOWORD(lParam) - OFFSET_X) / CELL_SIZE;
         int gridY = (HIWORD(lParam) - OFFSET_Y) / CELL_SIZE;
         if (gridX >= 0 && gridX < g_Logic.GetWidth() && gridY >= 0 && gridY < g_Logic.GetHeight()) {
-            g_Logic.TryChord(gridX, gridY);
+            if (g_Logic.GetStatus() == GameStatus::Playing) {
+                g_Logic.TryChord(gridX, gridY);
+                if (g_Logic.GetStatus() == GameStatus::Lost) {
+                    PlayGameSound(SoundEvent::Explode);
+                }
+            }
         }
         break;
     }
     case WM_TIMER:
+        if (g_Logic.GetStatus() == GameStatus::Playing) {
+            PlayGameSound(SoundEvent::Tick);
+        }
         g_Logic.UpdateTimer();
         break;
     case WM_DESTROY:

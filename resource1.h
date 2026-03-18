@@ -2,6 +2,11 @@
 // Microsoft Visual C++ generated include file.
 // Used by MineSweepVsProject1.rc
 
+// 声音资源 ID
+#define IDR_SOUND_TICK    201
+#define IDR_SOUND_EXPLODE 202
+#define IDR_SOUND_WIN     203
+
 // 新对象的下一组默认值
 // 
 #ifdef APSTUDIO_INVOKED

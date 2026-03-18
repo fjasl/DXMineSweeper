@@ -83,6 +83,14 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
                 if (ImGui::ColorEdit3("Clear Color", clearColor)) {
                     
                 }
+                ImGui::Separator();
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "FPS Cap:");
+                ImGui::SameLine();
+                if (ImGui::RadioButton("Unlimited", &m_fpsCap, 0)) {}
+                ImGui::SameLine();
+                if (ImGui::RadioButton("60 FPS",    &m_fpsCap, 60)) {}
+                ImGui::SameLine();
+                if (ImGui::RadioButton("120 FPS",   &m_fpsCap, 120)) {}
                 ImGui::EndTabItem();
             }
 

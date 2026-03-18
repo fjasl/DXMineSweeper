@@ -59,3 +59,7 @@ END
 /////////////////////////////////////////////////////////////////////////////
 #endif    // 不是 APSTUDIO_INVOKED
 IDI_APP_ICON ICON "assets/winmine.ico"
+
+IDR_SOUND_TICK    WAVE "assets/tick.wav"
+IDR_SOUND_EXPLODE WAVE "assets/explode.wav"
+IDR_SOUND_WIN     WAVE "assets/win.wav"

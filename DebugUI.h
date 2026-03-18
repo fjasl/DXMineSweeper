@@ -11,6 +11,7 @@ public:
     bool IsShowMinesEnabled() const { return m_showMines; }
     void OnCharInput(wchar_t ch);
     bool IsVisible() const { return m_visible; };
+    int  GetFpsCap()  const { return m_fpsCap; }  // 0=无限 60=60fps 120=120fps
 private:
 	bool m_visible = false; 
     bool m_showMines = false;
@@ -23,5 +24,6 @@ private:
     double m_lastStepTime = 0.0;   
     bool m_crossSwitch = false; 
     float m_crossColor[3] = { 1.0f, 0.0f, 0.0f };
+    int  m_fpsCap = 0;  // 0=无限 60=60fps 120=120fps
     void PerformAutoStep(MinesweeperLogic& logic);
 };
