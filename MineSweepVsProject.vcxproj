@@ -131,6 +131,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AppConfig.cpp" />
     <ClCompile Include="AppMenu.cpp" />
     <ClCompile Include="D3DContext.cpp" />
     <ClCompile Include="DebugUI.cpp" />
@@ -148,6 +149,7 @@
     <ClCompile Include="TextureLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AppConfig.h" />
     <ClInclude Include="AppMenu.h" />
     <ClInclude Include="D3DContext.h" />
     <ClInclude Include="DebugUI.h" />

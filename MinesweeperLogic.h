@@ -4,6 +4,7 @@
 enum class GameStatus { Playing, Won, Lost };
 
 // --- 经典位布局常量 ---
+#define STATE_QUESTION 0x08  // 增加问号状态位 (0x08)
 #define STATE_MINE    0x10  // 地雷
 #define STATE_OPEN    0x20  // 已打开
 #define STATE_FLAG    0x40  // 已插旗
@@ -11,6 +12,7 @@ enum class GameStatus { Playing, Won, Lost };
 #define MASK_COUNT    0x0F  // 低4位存储周围雷数 (0-8)
 
 class MinesweeperLogic {
+    friend class DebugUI;
 public:
     MinesweeperLogic();
     void SetLevel(int width, int height, int mines);
@@ -35,6 +37,7 @@ public:
     bool IsRevealed(int x, int y) const { return m_board[y * m_width + x] & STATE_OPEN; }
     bool IsFlagged(int x, int y) const { return m_board[y * m_width + x] & STATE_FLAG; }
     bool IsExploded(int x, int y) const { return m_board[y * m_width + x] & STATE_ERROR; }
+    bool IsQuestioned(int x, int y) const { return m_board[y * m_width + x] & STATE_QUESTION; }
     int GetNeighborCount(int x, int y) const { return m_board[y * m_width + x] & MASK_COUNT; }
 
 private:

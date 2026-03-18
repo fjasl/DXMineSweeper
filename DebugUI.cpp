@@ -1,45 +1,176 @@
 #include "DebugUI.h"
 #include "imgui/imgui.h"
 
-void DebugUI::Render(MinesweeperLogic& logic) {
-    if (ImGui::Begin("Cheat & Debug Menu", &m_visible)) {
+void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& renderer) {
+  
+    ImGui::SetNextWindowSize(ImVec2(400, 500), ImGuiCond_FirstUseEver);
 
-        if (ImGui::CollapsingHeader("Cheats", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Checkbox("Vision (Show All Mines)", &m_showMines);
+    if (ImGui::Begin("Global State Monitor", &m_visible)) {
 
-            if (ImGui::Button("Instant Win")) {
-                // ÕâÀï¿ÉÒÔÔÚÂß¼­²ãÊµÏÖÒ»¸ö½Ó¿Ú£¬»òÕßÖ±½ÓÊÖ¶¯½Ò¿ªËùÓÐ·ÇÀ×¸ñ
-                // ÔÝÊ±Áô¿Õ£¬Ò»»á¶ù¿ÉÒÔÏ¸»¯Âß¼­
+        if (ImGui::BeginTabBar("Modules")) {
+
+           
+            if (ImGui::BeginTabItem("Logic")) {
+
+                // 1. æš´éœ²å†…å­˜ä½ç½® (Memory Addresses)
+                ImGui::TextColored(ImVec4(1, 0, 1, 1), "Memory Inspector:");
+                ImGui::BulletText("Logic Object Address: %p", &logic);
+                // å¦‚æžœæ‚¨åœ¨ MinesweeperLogic ä¸­æŠŠ m_board è®¾ä¸ºå…¬æœ‰æˆ–æ·»åŠ äº†å‹å…ƒï¼Œå¯ä»¥æ‰“å°æ›´æ·±å±‚åœ°å€
+                // ImGui::BulletText("Board Array Address: %p", &logic.m_board); 
+                ImGui::Separator();
+                // 2. å¸¦å‚æ•°çš„æ–¹æ³•è°ƒç”¨ (SetLevel)
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "Call: SetLevel(w, h, m)");
+                static int setW = 9, setH = 9, setM = 10;
+                ImGui::SetNextItemWidth(100); ImGui::InputInt("W##set", &setW); ImGui::SameLine();
+                ImGui::SetNextItemWidth(100); ImGui::InputInt("H##set", &setH); ImGui::SameLine();
+                ImGui::SetNextItemWidth(100); ImGui::InputInt("M##set", &setM);
+
+                if (ImGui::Button("Apply Level Settings")) {
+                    logic.SetLevel(setW, setH, setM);
+                    // æ³¨æ„ï¼šä¿®æ”¹å…³å¡åŽï¼Œä¸»çª—å£å¤§å°å¯èƒ½éœ€è¦åŒæ­¥æ›´æ–°ï¼Œè¿™é‡Œå¯èƒ½éœ€è¦è°ƒç”¨ main.cpp é‡Œçš„ UpdateSize
+                }
+                ImGui::Separator();
+                // 3. å®žæ—¶å•å…ƒæ ¼æ“ä½œ (Reveal/Flag/Chord)
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "Cell Operations:");
+                static int opX = 0, opY = 0;
+                ImGui::SetNextItemWidth(100); ImGui::InputInt("X##op", &opX); ImGui::SameLine();
+                ImGui::SetNextItemWidth(100); ImGui::InputInt("Y##op", &opY);
+                if (ImGui::Button("RevealCell")) logic.RevealCell(opX, opY);
+                ImGui::SameLine();
+                if (ImGui::Button("ToggleFlag")) logic.ToggleFlag(opX, opY);
+                ImGui::SameLine();
+                if (ImGui::Button("TryChord"))  logic.TryChord(opX, opY);
+                ImGui::Separator();
+                // 4. åªè¯»å±žæ€§å±•ç¤º (åŽŸæœ‰å†…å®¹)
+                ImGui::TextColored(ImVec4(0, 1, 0, 1), "Live Properties:");
+                ImGui::BulletText("Current Board: %d x %d", logic.GetWidth(), logic.GetHeight());
+                ImGui::BulletText("Mines Left: %d / %d", logic.GetMinesLeft(), logic.GetTotalMines());
+                ImGui::BulletText("Status: %d (0:Playing, 1:Won, 2:Lost)", (int)logic.GetStatus());
+                if (ImGui::TreeNode("Raw Memory Viewer")) {
+                    static int inspectX = 0, inspectY = 0;
+                    ImGui::InputInt("Inspect X", &inspectX);
+                    ImGui::InputInt("Inspect Y", &inspectY);
+                    if (inspectX >= 0 && inspectX < logic.GetWidth() && inspectY >= 0 && inspectY < logic.GetHeight()) {
+                        unsigned char rawVal = logic.m_board[inspectY * logic.m_width + inspectX];
+                        ImGui::Text("Cell Memory Address: %p", &logic.m_board[inspectY * logic.m_width + inspectX]);
+                        ImGui::Text("Raw Hex Value: 0x%02X", rawVal);
+
+                        // è§£é‡Šä½ä¿¡æ¯
+                        ImGui::BulletText("Is Mine: %s", (rawVal & STATE_MINE) ? "YES" : "NO");
+                        ImGui::BulletText("Is Open: %s", (rawVal & STATE_OPEN) ? "YES" : "NO");
+                        ImGui::BulletText("Is Flag: %s", (rawVal & STATE_FLAG) ? "YES" : "NO");
+                        ImGui::BulletText("Is Quest: %s", (rawVal & STATE_QUESTION) ? "YES" : "NO");
+                        ImGui::BulletText("Neighbor Count: %d", rawVal & MASK_COUNT);
+                    }
+                    ImGui::TreePop();
+                }
+                ImGui::EndTabItem();
+                
+            }
+
+            
+            if (ImGui::BeginTabItem("Graphics")) {
+                ImGui::Text("Device Address: %p", d3d.GetDevice());
+                ImGui::Text("Context Address: %p", d3d.GetDeviceContext());
+
+                static float clearColor[3] = { 0.753f, 0.753f, 0.753f };
+                if (ImGui::ColorEdit3("Clear Color", clearColor)) {
+                    
+                }
+                ImGui::EndTabItem();
+            }
+
+            
+            if (ImGui::BeginTabItem("Cheats")) {
+                ImGui::Checkbox("X-Ray: Show Mines on Grid", &m_showMines);
+                ImGui::Separator();
+                ImGui::TextColored(ImVec4(0, 1, 1, 1), "Auto-Solve Controller:");
+                ImGui::SetNextItemWidth(100);
+                if (ImGui::InputFloat("Freq (Hz)", &m_solveFreq)) {
+                    
+                    if (m_solveFreq <= 0.0f) m_solveFreq = 1.0f;
+                }
+                ImGui::Checkbox("Enable Auto-Solver", &m_autoSolve);
+
+                if (ImGui::Button("Instant Win (Reveal All)")) {
+                    for (int y = 0; y < logic.GetHeight(); ++y) {
+                        for (int x = 0; x < logic.GetWidth(); ++x) {
+                            if (!logic.IsMine(x, y)) logic.RevealCell(x, y);
+                        }
+                    }
+                }
+                ImGui::EndTabItem();
+            }
+
+            ImGui::EndTabBar();
+        }
+    }
+    ImGui::End();
+   
+    if (m_showMines && logic.GetStatus() == GameStatus::Playing) {
+      
+        ImDrawList* drawList = ImGui::GetBackgroundDrawList();
+        for (int y = 0; y < logic.GetHeight(); ++y) {
+            for (int x = 0; x < logic.GetWidth(); ++x) {
+               
+                if (logic.IsMine(x, y) && !logic.IsRevealed(x, y)) {
+                  
+                    float rect_x1 = (float)(OFFSET_X + x * CELL_SIZE);
+                    float rect_y1 = (float)(OFFSET_Y + y * CELL_SIZE);
+                    float rect_x2 = rect_x1 + CELL_SIZE;
+                    float rect_y2 = rect_y1 + CELL_SIZE;
+                    drawList->AddRectFilled(
+                        ImVec2(rect_x1 + 2, rect_y1 + 2),
+                        ImVec2(rect_x2 - 2, rect_y2 - 2),
+                        IM_COL32(255, 0, 0, 100),
+                        2.0f
+                    );
+                   
+                    drawList->AddRect(
+                        ImVec2(rect_x1 + 1, rect_y1 + 1),
+                        ImVec2(rect_x2 - 1, rect_y2 - 1),
+                        IM_COL32(255, 255, 0, 200) 
+                    );
+                }
             }
         }
-
-        if (ImGui::CollapsingHeader("Game Stats")) {
-            ImGui::Text("Time: %d s", logic.GetTime());
-            ImGui::Text("Mines Left: %d", logic.GetMinesLeft());
-            ImGui::Text("Status: %s",
-                (logic.GetStatus() == GameStatus::Won ? "WON" :
-                    (logic.GetStatus() == GameStatus::Lost ? "LOST" : "Playing")));
-        }
-
-    
-    
     }
-   
-    ImGui::End();
+    if (m_autoSolve && logic.GetStatus() == GameStatus::Playing) {
+        double currentTime = ImGui::GetTime();
+        double interval = 1.0 / (double)m_solveFreq;
+        if (currentTime - m_lastStepTime >= interval) {
+            PerformAutoStep(logic);
+            m_lastStepTime = currentTime;
+        }
+    }
 }
 
-void DebugUI::OnCharInput(wchar_t ch) {
-    // ½«ÊäÈëµÄ×Ö·û¼ÓÈë»º³åÇø
-    m_inputBuffer += towlower(ch); // ×ªÎªÐ¡Ð´Æ¥Åä¸üºÃÓÃ
 
-    // Ö»±£Áô×î½üºÍ×÷±×Âë³¤¶ÈÏàÍ¬µÄ×Ö·û
+void DebugUI::OnCharInput(wchar_t ch) {
+   
+    m_inputBuffer += towlower(ch); // ×ªÎªÐ¡Ð´Æ¥ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+
+    // Ö»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ë³¤ï¿½ï¿½ï¿½ï¿½Í¬ï¿½ï¿½ï¿½Ö·ï¿½
     if (m_inputBuffer.length() > m_cheatCode.length()) {
         m_inputBuffer.erase(0, 1);
     }
 
-    // Èç¹ûÆ¥Åä³É¹¦£¬ÇÐ»»¿É¼ûÐÔ
+    
     if (m_inputBuffer == m_cheatCode) {
         m_visible = !m_visible;
-        m_inputBuffer.clear(); // Æ¥ÅäºóÇå¿Õ£¬·ÀÖ¹Á¬°´µ¼ÖÂÆµ·±ÇÐ»»
+        m_inputBuffer.clear();
     }
+}
+void DebugUI::PerformAutoStep(MinesweeperLogic& logic) {
+    for (int y = 0; y < logic.GetHeight(); ++y) {
+        for (int x = 0; x < logic.GetWidth(); ++x) {
+            
+            if (!logic.IsMine(x, y) && !logic.IsRevealed(x, y)) {
+                logic.RevealCell(x, y);
+                return; 
+            }
+        }
+    }
+    
+    m_autoSolve = false;
 }

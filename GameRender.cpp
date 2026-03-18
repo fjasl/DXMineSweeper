@@ -173,16 +173,15 @@ void GameRenderer::Render(ID3D11DeviceContext* context, HWND hWnd, MinesweeperLo
                      blkIdx = BLK_REVEALED_EMPTY;
                  }
                  else if (isFlagged) {
-                  
-                     if (logic.GetStatus() == GameStatus::Lost && !isMine) {
-                         blkIdx = BLK_WRONG_FLAG;
-                     }
-                     else {
-                         blkIdx = BLK_FLAG;
-                     }
+                     // 渲染旗子逻辑 (保持不变)
+                     blkIdx = (logic.GetStatus() == GameStatus::Lost && !isMine) ? BLK_WRONG_FLAG : BLK_FLAG;
+                 }
+                 else if (logic.IsQuestioned(x, y)) {
+                     // --- 新增：渲染问号 ---
+                     // 根据是否按下左键显示不同的问号样式
+                     blkIdx = shouldPush ? BLK_QUESTION_PUSHED : BLK_QUESTION;
                  }
                  else {
-                    
                      blkIdx = BLK_UNTOUCHED;
                  }
                

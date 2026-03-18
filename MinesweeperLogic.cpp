@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <ctime>
 
+
+
 MinesweeperLogic::MinesweeperLogic()
     : m_width(0), m_height(0), m_mines(0), m_status(GameStatus::Playing),
     m_flagsPlaced(0), m_cellsRevealed(0), m_seconds(0) {
@@ -95,18 +97,27 @@ void MinesweeperLogic::FloodFill(int x, int y) {
     }
 }
 
-
+extern bool g_bMarks; // 引用外部的标记开关
 void MinesweeperLogic::ToggleFlag(int x, int y) {
     if (!IsInBounds(x, y) || m_status != GameStatus::Playing) return;
-
     unsigned char& cell = m_board[y * m_width + x];
-    if (cell & STATE_OPEN) return; // 已经打开的不能插旗
+    if (cell & STATE_OPEN) return; // 已经打开的不能标记
+    // --- 三态循环逻辑 ---
     if (cell & STATE_FLAG) {
-        cell &= ~STATE_FLAG; // 移除旗子
+        // 当前是旗子 -> 变为问号 (如果开启了标记功能) 或 变为恢复为空
+        cell &= ~STATE_FLAG;
         m_flagsPlaced--;
+        if (g_bMarks) {
+            cell |= STATE_QUESTION;
+        }
+    }
+    else if (cell & STATE_QUESTION) {
+        // 当前是问号 -> 恢复为空
+        cell &= ~STATE_QUESTION;
     }
     else {
-        cell |= STATE_FLAG; // 插上旗子
+        // 当前为空 -> 变为旗子
+        cell |= STATE_FLAG;
         m_flagsPlaced++;
     }
 }

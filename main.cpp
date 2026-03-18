@@ -13,6 +13,7 @@
 #include "imgui/imgui_impl_win32.h"
 #include "imgui/imgui_impl_dx11.h"
 #include "DebugUI.h"
+#include "AppConfig.h"
 
 
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -57,7 +58,13 @@ void ChangeLevel(HWND hWnd, int w, int h, int mines) {
 
 
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
-    g_Logic.SetLevel(9, 9, 10); 
+    LoadAppConfig(); // 尝试读取存档
+    // 使用存档中的值初始化（如果没有存档则使用默认值）
+    g_Width = g_Config.lastWidth;
+    g_Height = g_Config.lastHeight;
+    int mines = g_Config.lastMines;
+    
+    g_Logic.SetLevel(g_Width, g_Height, mines);
     UpdateSize();
 
     WNDCLASSEXW wcex = { sizeof(WNDCLASSEX) };
@@ -108,9 +115,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
             auto context = g_D3D.GetDeviceContext();
 			g_Renderer.Render(context, hWnd, g_Logic, g_Width, g_Height, g_Logic.GetWidth(), g_Logic.GetHeight());
             //ImGui::ShowDemoWindow();
-            if (g_DebugUI.IsVisble())
+            if (g_DebugUI.IsVisible())
             {
-                g_DebugUI.Render(g_Logic);
+                g_DebugUI.Render(g_Logic, g_D3D, g_Renderer);
             }
           
             ImGui::Render();
@@ -182,6 +189,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         g_Logic.UpdateTimer();
         break;
     case WM_DESTROY:
+        // 退出前记录当前的关卡信息
+        g_Config.lastWidth = g_Logic.GetWidth();
+        g_Config.lastHeight = g_Logic.GetHeight();
+        g_Config.lastMines = g_Logic.GetTotalMines();
+
+        SaveAppConfig(); // 保存到磁盘
         PostQuitMessage(0);
         break;
     case WM_COMMAND:

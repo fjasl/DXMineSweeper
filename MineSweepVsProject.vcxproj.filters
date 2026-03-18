@@ -60,6 +60,9 @@
     <ClCompile Include="DebugUI.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="AppConfig.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DContext.h">
@@ -108,6 +111,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="DebugUI.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="AppConfig.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
