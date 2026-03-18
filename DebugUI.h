@@ -21,5 +21,7 @@ private:
     bool m_autoSolve = false;      
     float m_solveFreq = 1.0f;      
     double m_lastStepTime = 0.0;   
+    bool m_crossSwitch = false; 
+    float m_crossColor[3] = { 1.0f, 0.0f, 0.0f };
     void PerformAutoStep(MinesweeperLogic& logic);
 };

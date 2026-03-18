@@ -149,6 +149,7 @@ INT_PTR CALLBACK CustomDialogProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPa
                 hChild = GetWindow(hChild, GW_HWNDNEXT);
             }
         }
+
         SetDlgItemInt(hDlg, IDC_EDIT_HEIGHT, pData->height, FALSE);
         SetDlgItemInt(hDlg, IDC_EDIT_WIDTH, pData->width, FALSE);
         SetDlgItemInt(hDlg, IDC_EDIT_MINES, pData->mines, FALSE);
@@ -158,8 +159,18 @@ INT_PTR CALLBACK CustomDialogProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lPa
         if (LOWORD(wParam) == IDOK) {
             BOOL t;
             pData->height = GetDlgItemInt(hDlg, IDC_EDIT_HEIGHT, &t, FALSE);
+            // 限制高度在 1~50 之间
+            if (pData->height < 1) pData->height = 1;
+            else if (pData->height > 50) pData->height = 50;
             pData->width = GetDlgItemInt(hDlg, IDC_EDIT_WIDTH, &t, FALSE);
+            if (pData->width < 1) pData->width = 1;
+            else if (pData->width > 50) pData->width = 50;
             pData->mines = GetDlgItemInt(hDlg, IDC_EDIT_MINES, &t, FALSE);
+            // 地雷数不能为负数
+            if (pData->mines < 0) pData->mines = 1;
+            // 计算最大允许地雷数（至少留一个空格）
+            int maxMines = 999;
+            if (pData->mines > maxMines) pData->mines = maxMines;
             EndDialog(hDlg, IDOK);
         }
         else if (LOWORD(wParam) == IDCANCEL) {

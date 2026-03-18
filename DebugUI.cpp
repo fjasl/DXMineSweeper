@@ -70,6 +70,12 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
 
             
             if (ImGui::BeginTabItem("Graphics")) {
+               
+                ImGui::Checkbox("Enable Cross Locate", &m_crossSwitch);
+                if (ImGui::ColorEdit3("Clear Color",m_crossColor)) {
+
+                }
+                ImGui::Separator();
                 ImGui::Text("Device Address: %p", d3d.GetDevice());
                 ImGui::Text("Context Address: %p", d3d.GetDeviceContext());
 
@@ -101,7 +107,38 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
                 }
                 ImGui::EndTabItem();
             }
+            if (ImGui::BeginTabItem("CustomInfo")) {
 
+                ImGui::Text("FPS: %.1f  (%.2f ms/frame)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+
+                // 将鼠标屏幕坐标转换为棋盘格子坐标
+                ImVec2 mp = ImGui::GetMousePos();
+                int cellX = (int)(mp.x - OFFSET_X) / CELL_SIZE;
+                int cellY = (int)(mp.y - OFFSET_Y) / CELL_SIZE;
+
+                bool inBoard = (cellX >= 0 && cellX < logic.GetWidth() &&
+                                cellY >= 0 && cellY < logic.GetHeight());
+
+                ImGui::Text("Mouse Screen: (%.0f, %.0f)", mp.x, mp.y);
+
+                if (inBoard) {
+                    bool hasMine = logic.IsMine(cellX, cellY);
+                    // 先输出坐标文字
+                    ImGui::Text("CurrentLocation: %d, %d  HasMine:", cellX, cellY);
+                    ImGui::SameLine();
+                    if (hasMine) {
+                        // 红色 X
+                        ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "[NO]"); // ✗
+                    } else {
+                        // 绿色 √
+                        ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.3f, 1.0f), "[OK]"); // ✓
+                    }
+                } else {
+                    ImGui::TextDisabled("CurrentLocation: -- (out of board)");
+                }
+
+                ImGui::EndTabItem();
+            }
             ImGui::EndTabBar();
         }
     }
@@ -143,14 +180,43 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
             m_lastStepTime = currentTime;
         }
     }
+    if (m_crossSwitch)
+    {
+        ImDrawList* drawList = ImGui::GetBackgroundDrawList();
+        ImVec2 mousePos = ImGui::GetMousePos();
+        ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+
+       
+        ImU32 lineColor = IM_COL32(
+            (int)(m_crossColor[0] * 255),
+            (int)(m_crossColor[1] * 255),
+            (int)(m_crossColor[2] * 255),
+            180
+        );
+        float lineThickness = 1.0f;
+
+        
+        drawList->AddLine(
+            ImVec2(0.0f,          mousePos.y),
+            ImVec2(displaySize.x, mousePos.y),
+            lineColor, lineThickness
+        );
+
+        // 垂直线：从屏幕最上到最下，X = 鼠标X
+        drawList->AddLine(
+            ImVec2(mousePos.x, 0.0f),
+            ImVec2(mousePos.x, displaySize.y),
+            lineColor, lineThickness
+        );
+    }
 }
 
 
 void DebugUI::OnCharInput(wchar_t ch) {
    
-    m_inputBuffer += towlower(ch); // תΪСдƥ�������
+    m_inputBuffer += towlower(ch); 
 
-    // ֻ��������������볤����ͬ���ַ�
+
     if (m_inputBuffer.length() > m_cheatCode.length()) {
         m_inputBuffer.erase(0, 1);
     }

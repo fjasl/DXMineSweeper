@@ -219,7 +219,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         case IDM_GAME_CUSTOM: {
             CustomLevelData data;
             data.width = g_Logic.GetWidth();
+         
             data.height = g_Logic.GetHeight();
+       
             data.mines = g_Logic.GetTotalMines();
             void* pTemplate = CreateCustomDialogTemplate();
             if (DialogBoxIndirectParamW(GetModuleHandle(NULL), (LPCDLGTEMPLATEW)pTemplate, hWnd, CustomDialogProc, (LPARAM)&data) == IDOK) {
