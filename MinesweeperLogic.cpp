@@ -2,9 +2,10 @@
 #include <algorithm>
 #include <ctime>
 
-MinesweeperLogic::MinesweeperLogic() 
-    : m_width(0), m_height(0), m_mines(0), m_status(GameStatus::Playing), 
-      m_firstClick(true), m_flagsPlaced(0), m_cellsRevealed(0), m_seconds(0) {
+MinesweeperLogic::MinesweeperLogic()
+    : m_width(0), m_height(0), m_mines(0), m_status(GameStatus::Playing),
+    m_flagsPlaced(0), m_cellsRevealed(0), m_seconds(0) {
+    memset(m_board, 0, sizeof(m_board));
 }
 
 void MinesweeperLogic::SetLevel(int width, int height, int mines) {
@@ -15,35 +16,32 @@ void MinesweeperLogic::SetLevel(int width, int height, int mines) {
 }
 
 void MinesweeperLogic::StartNewGame() {
-    m_grid.assign(m_width * m_height, Cell());
+    memset(m_board, 0, sizeof(m_board)); // 清空内存池
     m_status = GameStatus::Playing;
-    m_firstClick = true;
     m_flagsPlaced = 0;
     m_cellsRevealed = 0;
     m_seconds = 0;
+
+    PlaceMines(); // 立即布雷，不再等待第一次点击
 }
 
-void MinesweeperLogic::PlaceMines(int firstX, int firstY) {
-    std::vector<int> positions;
-    for (int i = 0; i < m_width * m_height; ++i) {
-        int x = i % m_width;
-        int y = i / m_width;
-        // First click protection: don't place mine on the first clicked cell
-        if (x == firstX && y == firstY) continue;
-        positions.push_back(i);
+
+void MinesweeperLogic::PlaceMines() {
+    int placed = 0;
+    while (placed < m_mines) {
+        int r = rand() % (m_width * m_height);
+        if (!(m_board[r] & STATE_MINE)) {
+            m_board[r] |= STATE_MINE;
+            placed++;
+        }
     }
 
-    std::shuffle(positions.begin(), positions.end(), std::default_random_engine((unsigned int)time(nullptr)));
-
-    for (int i = 0; i < m_mines && i < (int)positions.size(); ++i) {
-        m_grid[positions[i]].isMine = true;
-    }
-
-    // Calculate neighbor counts
+    // 计算数字
     for (int y = 0; y < m_height; ++y) {
         for (int x = 0; x < m_width; ++x) {
-            if (!m_grid[y * m_width + x].isMine) {
-                m_grid[y * m_width + x].neighborMines = CountNeighborMines(x, y);
+            if (!(m_board[y * m_width + x] & STATE_MINE)) {
+                int count = CountNeighborMines(x, y);
+                m_board[y * m_width + x] |= (count & MASK_COUNT);
             }
         }
     }
@@ -51,35 +49,31 @@ void MinesweeperLogic::PlaceMines(int firstX, int firstY) {
 
 void MinesweeperLogic::RevealCell(int x, int y) {
     if (!IsInBounds(x, y) || m_status != GameStatus::Playing) return;
-    
-    Cell& cell = m_grid[y * m_width + x];
-    if (cell.isRevealed || cell.isFlagged) return;
 
-    if (m_firstClick) {
-        PlaceMines(x, y);
-        m_firstClick = false;
-    }
+    unsigned char& cell = m_board[y * m_width + x];
+    if ((cell & STATE_OPEN) || (cell & STATE_FLAG)) return;
 
-    cell.isRevealed = true;
+    cell |= STATE_OPEN;
     m_cellsRevealed++;
 
-    if (cell.isMine) {
-        cell.isExploded = true;
+    if (cell & STATE_MINE) {
+        cell |= STATE_ERROR; // 标记爆炸点
         m_status = GameStatus::Lost;
-        // Reveal all mines upon loss
-        for (auto& c : m_grid) {
-            if (c.isMine) c.isRevealed = true;
-            if (c.isFlagged && !c.isMine) c.isWrongFlag = true;
+        // 游戏结束：展示所有地雷
+        for (int i = 0; i < m_width * m_height; ++i) {
+            if (m_board[i] & STATE_MINE) m_board[i] |= STATE_OPEN;
+            // 如果标错了旗，也标记为错误
+            if ((m_board[i] & STATE_FLAG) && !(m_board[i] & STATE_MINE)) m_board[i] |= STATE_ERROR;
         }
         return;
     }
 
-    if (cell.neighborMines == 0) {
+    if ((cell & MASK_COUNT) == 0) {
         FloodFill(x, y);
     }
-
     CheckWin();
 }
+
 
 void MinesweeperLogic::FloodFill(int x, int y) {
     for (int dy = -1; dy <= 1; ++dy) {
@@ -88,11 +82,11 @@ void MinesweeperLogic::FloodFill(int x, int y) {
             int nx = x + dx;
             int ny = y + dy;
             if (IsInBounds(nx, ny)) {
-                Cell& neighbor = m_grid[ny * m_width + nx];
-                if (!neighbor.isRevealed && !neighbor.isFlagged) {
-                    neighbor.isRevealed = true;
+                unsigned char& neighbor = m_board[ny * m_width + nx];
+                if (!(neighbor & STATE_OPEN) && !(neighbor & STATE_FLAG)) {
+                    neighbor |= STATE_OPEN;
                     m_cellsRevealed++;
-                    if (neighbor.neighborMines == 0 && !neighbor.isMine) {
+                    if ((neighbor & MASK_COUNT) == 0 && !(neighbor & STATE_MINE)) {
                         FloodFill(nx, ny);
                     }
                 }
@@ -101,36 +95,26 @@ void MinesweeperLogic::FloodFill(int x, int y) {
     }
 }
 
+
 void MinesweeperLogic::ToggleFlag(int x, int y) {
     if (!IsInBounds(x, y) || m_status != GameStatus::Playing) return;
 
-    Cell& cell = m_grid[y * m_width + x];
-    if (cell.isRevealed) return;
-    // 状态循环逻辑：
-    if (!cell.isFlagged && !cell.isQuestioned) {
-        // 1. 从“普通”变为“插旗”
-        cell.isFlagged = true;
-        m_flagsPlaced++; // 只有插旗才会计数
+    unsigned char& cell = m_board[y * m_width + x];
+    if (cell & STATE_OPEN) return; // 已经打开的不能插旗
+    if (cell & STATE_FLAG) {
+        cell &= ~STATE_FLAG; // 移除旗子
+        m_flagsPlaced--;
     }
-    else if (cell.isFlagged) {
-        // 2. 从“插旗”变为“问号”
-        cell.isFlagged = false;
-        cell.isQuestioned = true;
-        m_flagsPlaced--; // 取消旗子，计数减一
-    }
-    else if (cell.isQuestioned) {
-        // 3. 从“问号”变回“普通”
-        cell.isQuestioned = false;
-        // 此时 isFlagged 和 isQuestioned 都为 false
+    else {
+        cell |= STATE_FLAG; // 插上旗子
+        m_flagsPlaced++;
     }
 }
 
 void MinesweeperLogic::TryChord(int x, int y) {
-    if (!IsInBounds(x, y) || m_status != GameStatus::Playing) return;
-    Cell& cell = m_grid[y * m_width + x];
-    if (!cell.isRevealed || cell.neighborMines == 0) return;
-
-    if (CountNeighborFlags(x, y) == cell.neighborMines) {
+    if (!IsInBounds(x, y) || !(m_board[y * m_width + x] & STATE_OPEN)) return;
+    int mines = m_board[y * m_width + x] & MASK_COUNT;
+    if (mines > 0 && mines == CountNeighborFlags(x, y)) {
         for (int dy = -1; dy <= 1; ++dy) {
             for (int dx = -1; dx <= 1; ++dx) {
                 if (dx == 0 && dy == 0) continue;
@@ -141,17 +125,16 @@ void MinesweeperLogic::TryChord(int x, int y) {
 }
 
 void MinesweeperLogic::CheckWin() {
-    if (m_cellsRevealed == (m_width * m_height - m_mines)) {
+    // 如果“总格子数 - 雷数 == 已打开格子数”，则获胜
+    if (m_width * m_height - m_mines == m_cellsRevealed) {
         m_status = GameStatus::Won;
-        // Flag all remaining mines
-        for (auto& c : m_grid) {
-            if (c.isMine && !c.isFlagged) {
-                c.isFlagged = true;
-            }
+        // 获胜后，所有的雷都自动标记为旗子 (经典做法)
+        for (int i = 0; i < m_width * m_height; ++i) {
+            if (m_board[i] & STATE_MINE) m_board[i] |= STATE_FLAG;
         }
-        m_flagsPlaced = m_mines;
     }
 }
+
 
 bool MinesweeperLogic::IsInBounds(int x, int y) const {
     return x >= 0 && x < m_width && y >= 0 && y < m_height;
@@ -164,7 +147,7 @@ int MinesweeperLogic::CountNeighborMines(int x, int y) const {
             if (dx == 0 && dy == 0) continue;
             int nx = x + dx;
             int ny = y + dy;
-            if (IsInBounds(nx, ny) && m_grid[ny * m_width + nx].isMine) {
+            if (IsInBounds(nx, ny) && (m_board[ny * m_width + nx] & STATE_MINE)) {
                 count++;
             }
         }
@@ -176,9 +159,8 @@ int MinesweeperLogic::CountNeighborFlags(int x, int y) const {
     int count = 0;
     for (int dy = -1; dy <= 1; ++dy) {
         for (int dx = -1; dx <= 1; ++dx) {
-            int nx = x + dx;
-            int ny = y + dy;
-            if (IsInBounds(nx, ny) && m_grid[ny * m_width + nx].isFlagged) {
+            if (dx == 0 && dy == 0) continue;
+            if (IsInBounds(x + dx, y + dy) && (m_board[(y + dy) * m_width + (x + dx)] & STATE_FLAG)) {
                 count++;
             }
         }
@@ -187,7 +169,8 @@ int MinesweeperLogic::CountNeighborFlags(int x, int y) const {
 }
 
 void MinesweeperLogic::UpdateTimer() {
-    if (m_status == GameStatus::Playing && !m_firstClick) {
-        if (m_seconds < 999) m_seconds++;
+    if (m_status == GameStatus::Playing && m_cellsRevealed > 0) {
+        m_seconds++;
+        if (m_seconds > 999) m_seconds = 999;
     }
 }

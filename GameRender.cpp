@@ -142,66 +142,52 @@ void GameRenderer::Render(ID3D11DeviceContext* context, HWND hWnd, MinesweeperLo
          // 3. Draw Grid
          for (int y = 0; y < logic.GetHeight(); ++y) {
              for (int x = 0; x < logic.GetWidth(); ++x) {
-                 const Cell& cell = logic.GetCell(x, y);
+                 // --- 新的取值方式：通过逻辑类的公共函数获取位状态 ---
+                 bool isRevealed = logic.IsRevealed(x, y);
+                 bool isMine = logic.IsMine(x, y);
+                 bool isFlagged = logic.IsFlagged(x, y);
+                 bool isExploded = logic.IsExploded(x, y);
+                 int count = logic.GetNeighborCount(x, y);
+                 // ---------------------------------------------
                  int blkIdx = BLK_UNTOUCHED;
-
                  bool shouldPush = false;
                  if (logic.GetStatus() == GameStatus::Playing) {
-                     // 左键逻辑：当前鼠标指向的这个格子下陷
+                     // 鼠标左键按下且悬停在该格
                      if (isLDown && x == mouseGridX && y == mouseGridY) {
                          shouldPush = true;
                      }
-                     // 中键逻辑：鼠标周围 3x3 的区域全部下陷
+                     // 鼠标中键按下且在 3x3 范围内
                      if (isMDown && abs(x - mouseGridX) <= 1 && abs(y - mouseGridY) <= 1) {
                          shouldPush = true;
                      }
                  }
-
-
-                 // 2. 状态判断优先级树
-                 if (cell.isRevealed) {
-                     // A. 已经挖开的情况 (不受鼠标按住影响)
-                     if (cell.isMine) {
-                         // 踩中的雷是红色背景 (BLK_EXPLODED)，其他露出来的雷是灰色背景 (BLK_MINE)
-                         blkIdx = cell.isExploded ? BLK_EXPLODED : BLK_MINE;
+                 // --- 根据状态决定显示的贴图索引 ---
+                 if (isRevealed) {
+                     if (isMine) {
+                         // 踩爆的雷显示红色背景 (BLK_EXPLODED)，普通的雷显示灰色背景 (BLK_MINE)
+                         blkIdx = isExploded ? BLK_EXPLODED : BLK_MINE;
                      }
                      else {
-                         // 数字逻辑：0 为全平空白块，1-8 为带颜色数字
-                         if (cell.neighborMines == 0) {
-                             blkIdx = BLK_REVEALED_EMPTY;
-                         }
-                         else {
-                             // 对应你那张倒序贴图的计算：BLK_1 是 14，减去偏移得到对应数字
-                             blkIdx = BLK_1 - (cell.neighborMines - 1);
-                         }
+                         // 0 显示空，1-8 显示对应数字
+                         if (count == 0) blkIdx = BLK_REVEALED_EMPTY;
+                         else blkIdx = BLK_1 - (count - 1);
                      }
                  }
-                 else if (shouldPush && !cell.isFlagged) {
-                     // B. 尚未挖掘，但鼠标正在按着它（预览效果）
-                     // 注意：插了旗的格子不能被按下
-                     if (cell.isQuestioned) {
-                         blkIdx = BLK_QUESTION_PUSHED; // 如果有问号，显示按下态问号 (索引 6)
-                     }
-                     else {
-                         blkIdx = BLK_REVEALED_EMPTY;  // 否则显示凹陷的空白块 (索引 15)
-                     }
+                 else if (shouldPush && !isFlagged) {
+                     // 预览按下状态
+                     blkIdx = BLK_REVEALED_EMPTY;
                  }
-                 else if (cell.isFlagged) {
-                     // C. 插了旗的情况
-                     // 如果游戏结束且旗子插错了位置，显示带 X 的雷 (BLK_WRONG_FLAG)
-                     if (logic.GetStatus() == GameStatus::Lost && !cell.isMine) {
+                 else if (isFlagged) {
+                     // 如果输了且没标对雷，显示红叉 (BLK_WRONG_FLAG)
+                     if (logic.GetStatus() == GameStatus::Lost && !isMine) {
                          blkIdx = BLK_WRONG_FLAG;
                      }
                      else {
                          blkIdx = BLK_FLAG;
                      }
                  }
-                 else if (cell.isQuestioned) {
-                     // D. 问号状态
-                     blkIdx = BLK_QUESTION;
-                 }
                  else {
-                     // E. 默认状态：凸起的未挖掘格子
+                     // 未点击状态
                      blkIdx = BLK_UNTOUCHED;
                  }
                  // 3. 执行绘制
