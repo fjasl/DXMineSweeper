@@ -65,7 +65,7 @@ void* CreateBestTimesTemplate() {
     DLGTEMPLATE* pDlg = (DLGTEMPLATE*)p;
     pDlg->style = DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU;
     pDlg->dwExtendedStyle = WS_EX_CONTEXTHELP;
-    pDlg->cdit = 9;
+    pDlg->cdit = 11;
     pDlg->x = 10; pDlg->y = 10; pDlg->cx = 160; pDlg->cy = 100;
     p += sizeof(DLGTEMPLATE);
     *(WORD*)p = 0; p += 2; *(WORD*)p = 0; p += 2;

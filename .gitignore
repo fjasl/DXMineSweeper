@@ -53,3 +53,5 @@
 *.ncb
 *.suo
 *.orig
+*.ini
+*.bin
