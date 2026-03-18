@@ -131,6 +131,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AppMenu.cpp" />
     <ClCompile Include="D3DContext.cpp" />
     <ClCompile Include="GameRender.cpp" />
     <ClCompile Include="main.cpp" />
@@ -139,6 +140,7 @@
     <ClCompile Include="TextureLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AppMenu.h" />
     <ClInclude Include="D3DContext.h" />
     <ClInclude Include="GameRender.h" />
     <ClInclude Include="MinesweeperLogic.h" />
