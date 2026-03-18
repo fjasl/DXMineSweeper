@@ -1,4 +1,4 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include <cwchar>
 #include <algorithm>
 #include "AppMenu.h"
@@ -56,6 +56,8 @@ void* CreateCustomDialogTemplate() {
     AppendItem(IDC_EDIT_MINES, L"Edit", L"", 45, 35, 35, 12, ES_NUMBER | WS_BORDER | WS_TABSTOP);
     AppendItem(IDOK, L"Button", L"\x786e\x5b9a", 90, 5, 25, 14, BS_DEFPUSHBUTTON | WS_TABSTOP);
     AppendItem(IDCANCEL, L"Button", L"\x53d6\x6d88", 90, 22, 25, 14, BS_PUSHBUTTON | WS_TABSTOP); 
+
+
     return buffer;
 }
 
@@ -240,6 +242,11 @@ HMENU CreateAppMenu() {
     AppendMenuW(hGame, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(hGame, MF_STRING, IDM_GAME_EXIT, L"\x9000\x51fa(&X)");
     AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hGame, L"\x6e38\x620f(&G)");
+
+    HMENU hSpecial = CreatePopupMenu();
+    AppendMenuW(hSpecial, MF_STRING, IDM_SPECIAL_NETWORK, L"网络游戏(&N)");
+    AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hSpecial, L"特色(&S)");
+
     return hMenu;
 }
 
@@ -267,4 +274,90 @@ void CheckHighScore(HWND hWnd) {
         DialogBoxIndirectParamW(GetModuleHandle(NULL), (LPCDLGTEMPLATEW)pT, hWnd, RecordScoreProc, (LPARAM)idx);
         SendMessage(hWnd, WM_COMMAND, IDM_GAME_BEST_TIMES, 0);
     }
+}
+// 1. 创建连接对话框的内存模板 (修复了字段缺失和对齐问题)
+void* CreateNetworkConnectTemplate() {
+    static unsigned char buffer[2048]; // 稍微加大缓冲区
+    memset(buffer, 0, sizeof(buffer)); // 全部清零，确保 dwExtendedStyle 等字段为 0
+
+    unsigned char* p = buffer;
+    DLGTEMPLATE* pDlg = (DLGTEMPLATE*)p;
+    pDlg->style = DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU;
+    pDlg->dwExtendedStyle = 0; // 必须明确设置为 0
+    pDlg->cdit = 6;            // 6 个控件
+    pDlg->x = 20; pDlg->y = 20; pDlg->cx = 160; pDlg->cy = 80;
+    p += sizeof(DLGTEMPLATE);
+
+    // 接下来是菜单(0)、类(0)和标题
+    *(WORD*)p = 0; p += 2; // 无菜单
+    *(WORD*)p = 0; p += 2; // 使用默认对话框类
+
+    const wchar_t* title = L"连接服务器";
+    wcscpy_s((wchar_t*)p, 64, title);
+    p += (wcslen(title) + 1) * sizeof(wchar_t);
+
+    // 辅助函数：添加控件并确保 4 字节对齐
+    auto AppendItem = [&](WORD ctrlId, const wchar_t* cls, const wchar_t* txt, short x, short y, short cx, short cy, DWORD style) {
+        while ((UINT_PTR)p % 4 != 0) { *(WORD*)p = 0; p += 2; } // 必须 4 字节对齐
+
+        DLGITEMTEMPLATE* item = (DLGITEMTEMPLATE*)p;
+        item->style = style | WS_CHILD | WS_VISIBLE;
+        item->dwExtendedStyle = 0; // 必须明确设置为 0
+        item->x = x; item->y = y; item->cx = cx; item->cy = cy;
+        item->id = ctrlId;
+        p += sizeof(DLGITEMTEMPLATE);
+
+        // 控件类名
+        wcscpy_s((wchar_t*)p, 64, cls); p += (wcslen(cls) + 1) * sizeof(wchar_t);
+        // 控件文本
+        wcscpy_s((wchar_t*)p, 64, txt); p += (wcslen(txt) + 1) * sizeof(wchar_t);
+        // 额外数据
+        *(WORD*)p = 0; p += 2;
+        };
+
+    AppendItem(IDC_STATIC, L"Static", L"服务器地址:", 10, 12, 45, 10, SS_LEFT);
+    AppendItem(IDC_EDIT_SERVER_IP, L"Edit", L"127.0.0.1", 60, 10, 90, 12, ES_AUTOHSCROLL | WS_BORDER | WS_TABSTOP);
+
+    AppendItem(IDC_STATIC, L"Static", L"端口号:", 10, 32, 45, 10, SS_LEFT);
+    AppendItem(IDC_EDIT_SERVER_PORT, L"Edit", L"8888", 60, 30, 40, 12, ES_NUMBER | WS_BORDER | WS_TABSTOP);
+
+    AppendItem(IDOK, L"Button", L"连接", 40, 55, 40, 15, BS_DEFPUSHBUTTON | WS_TABSTOP);
+    AppendItem(IDCANCEL, L"Button", L"取消", 90, 55, 40, 15, BS_PUSHBUTTON | WS_TABSTOP);
+
+    return buffer;
+}
+
+// 2. 连接对话框的事件处理
+INT_PTR CALLBACK NetworkConnectProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam) {
+    static NetworkConfig* pConfig = nullptr;
+    switch (msg) {
+    case WM_INITDIALOG: {
+        pConfig = (NetworkConfig*)lParam;
+        SetDlgItemTextW(hDlg, IDC_EDIT_SERVER_IP, pConfig->ip);
+        SetDlgItemInt(hDlg, IDC_EDIT_SERVER_PORT, pConfig->port, FALSE);
+
+        // 设置字体（可选，让界面好看点）
+        HFONT hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+        if (hFont) {
+            HWND hChild = GetWindow(hDlg, GW_CHILD);
+            while (hChild) {
+                SendMessage(hChild, WM_SETFONT, (WPARAM)hFont, TRUE);
+                hChild = GetWindow(hChild, GW_HWNDNEXT);
+            }
+        }
+        return TRUE;
+    }
+    case WM_COMMAND:
+        if (LOWORD(wParam) == IDOK) {
+            GetDlgItemTextW(hDlg, IDC_EDIT_SERVER_IP, pConfig->ip, 128);
+            BOOL trans;
+            pConfig->port = GetDlgItemInt(hDlg, IDC_EDIT_SERVER_PORT, &trans, FALSE);
+            EndDialog(hDlg, IDOK);
+        }
+        else if (LOWORD(wParam) == IDCANCEL) {
+            EndDialog(hDlg, IDCANCEL);
+        }
+        return TRUE;
+    }
+    return FALSE;
 }

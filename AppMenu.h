@@ -1,27 +1,38 @@
 #pragma once
 #include <windows.h>
 
-// --- ²Ëµ¥Óë¿Ø¼ş ID ---
-#define IDM_GAME_NEW          1001 // ¿ª¾Ö (F2)
+// --- èœå•ä¸æ§ä»¶ ID ---
+#define IDM_GAME_NEW          1001 // å¼€å±€ (F2)
 #define IDM_GAME_BEGINNER     1002
 #define IDM_GAME_INTERMEDIATE 1003
 #define IDM_GAME_EXPERT       1004
 #define IDM_GAME_CUSTOM       1005
-#define IDM_GAME_MARKS        1006 // ±ê¼Ç (?)
-#define IDM_GAME_COLOR        1007 // ÑÕÉ«
-#define IDM_GAME_SOUND        1008 // ÉùÒô
-#define IDM_GAME_BEST_TIMES   1009 // É¨À×Ó¢ĞÛ°ñ
-#define IDM_GAME_EXIT         1010 // ÍË³ö
+#define IDM_GAME_MARKS        1006 // æ ‡è®° (?)
+#define IDM_GAME_COLOR        1007 // é¢œè‰²
+#define IDM_GAME_SOUND        1008 // å£°éŸ³
+#define IDM_GAME_BEST_TIMES   1009 // æ‰«é›·è‹±é›„æ¦œ
+#define IDM_GAME_EXIT         1010 // é€€å‡º
+#define IDM_SPECIAL_NETWORK   1101 // ç½‘ç»œæ¸¸æˆåŠŸèƒ½çš„ ID
 
 #define IDC_EDIT_HEIGHT 2001
 #define IDC_EDIT_WIDTH  2002
 #define IDC_EDIT_MINES  2003
+#define IDC_EDIT_SERVER_IP  2101 
+#define IDC_EDIT_SERVER_PORT  2102 // æ–°å¢ç«¯å£ ID
+
+
 
 #ifndef IDC_STATIC
 #define IDC_STATIC (-1)
 #endif
 
-// --- Êı¾İ½á¹¹ ---
+struct NetworkConfig {
+    wchar_t ip[128];
+    int port;
+};
+
+
+
 struct CustomLevelData {
     int width, height, mines;
 };
@@ -31,22 +42,25 @@ struct ScoreRecord {
     wchar_t name[32];
 };
 
-// --- È«¾Ö UI ×´Ì¬ (ÓÉ AppUI.cpp ¶¨Òå) ---
+// --- å…¨å±€ UI çŠ¶æ€ (ç”± AppUI.cpp å®šä¹‰) ---
 extern ScoreRecord g_HighScores[3];
 extern bool g_bMarks, g_bColor, g_bSound;
 
-// --- ½Ó¿Úº¯ÊıÉùÃ÷ ---
+// --- æ¥å£å‡½æ•°å£°æ˜ ---
 HMENU CreateAppMenu();
 void UpdateMenuCheck(HWND hWnd);
 void CheckHighScore(HWND hWnd);
 int  GetCurrentLevelIndex();
 
-// ¶Ô»°¿ò¹ı³Ì (¹© DialogBox µ÷ÓÃ)
+
+// å¯¹è¯æ¡†è¿‡ç¨‹ (ä¾› DialogBox è°ƒç”¨)
 INT_PTR CALLBACK CustomDialogProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK BestTimesProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK RecordScoreProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK NetworkConnectProc(HWND, UINT, WPARAM, LPARAM);
 
-// Ä£°åÉú³Éº¯Êı
+// æ¨¡æ¿ç”Ÿæˆå‡½æ•°
 void* CreateCustomDialogTemplate();
 void* CreateBestTimesTemplate();
 void* CreateRecordScoreTemplate(int levelIdx);
+void* CreateNetworkConnectTemplate();

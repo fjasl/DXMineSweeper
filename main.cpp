@@ -1,5 +1,5 @@
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-
+#include "NetworkManager.h" // 必须放在第一行！
 #include <windows.h>
 #include <string>
 #include <algorithm>
@@ -14,6 +14,7 @@
 #include "imgui/imgui_impl_dx11.h"
 #include "DebugUI.h"
 #include "AppConfig.h"
+#include "LobbyUI.h"
 
 
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -66,7 +67,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
     
     g_Logic.SetLevel(g_Width, g_Height, mines);
     UpdateSize();
-
+    NetworkManager::Instance().Init();
     WNDCLASSEXW wcex = { sizeof(WNDCLASSEX) };
     wcex.style = CS_HREDRAW | CS_VREDRAW;
     wcex.lpfnWndProc = WndProc;
@@ -245,6 +246,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         case IDM_GAME_EXIT:
             PostQuitMessage(0);
             break;
+        case IDM_SPECIAL_NETWORK: {
+            LobbyUI::ShowConnectDialog(hWnd);
+            break;
+        }
         } 
         break;
 
