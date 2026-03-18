@@ -13,6 +13,8 @@ public:
     bool Resize(int width, int height); // 添加这一行
     void Clear(float r, float g, float b, float a);
     void Present();
+    bool InitImGui(HWND hWnd);
+    void CleanupImGui();
 
     ID3D11Device* GetDevice() const { return m_pd3dDevice.Get(); }
     ID3D11DeviceContext* GetDeviceContext() const { return m_pd3dImmediateContext.Get(); }

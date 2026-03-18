@@ -9,14 +9,19 @@
 #include "UIConstants.h"
 #include "GameRender.h"
 #include "AppMenu.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_win32.h"
+#include "imgui/imgui_impl_dx11.h"
+#include "DebugUI.h"
 
 
-
+extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 D3DContext g_D3D;
 MinesweeperLogic g_Logic;
 GameRenderer g_Renderer;
+DebugUI g_DebugUI;
 
 int g_Width = 0;
 int g_Height = 0;
@@ -31,7 +36,7 @@ void UpdateSize() {
 }
 
 void ChangeLevel(HWND hWnd, int w, int h, int mines) {
-    // 1. 设置逻辑层参数
+
     g_Logic.SetLevel(w, h, mines);
 
 
@@ -65,7 +70,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
     RegisterClassExW(&wcex);
 
     RECT rc = { 0, 0, g_Width, g_Height };
-    // Original-style window border
+   
     AdjustWindowRect(&rc, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, TRUE);
 
     HMENU hMenu = CreateAppMenu();
@@ -77,6 +82,12 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 
     if (!g_D3D.Initialize(hWnd, g_Width, g_Height)) return FALSE;
 	if (!g_Renderer.Initialize(g_D3D.GetDevice())) return FALSE;
+
+    // 在 g_Renderer.Initialize 之后插入
+    if (!g_D3D.InitImGui(hWnd)) return FALSE;
+    // 在循环处理 WM_QUIT 之前或程序退出前插入清理
+    // 注意在程序结束前调用以下清理代码
+   
 
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
@@ -90,9 +101,20 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
             DispatchMessage(&msg);
         }
         else {
-            g_D3D.Clear(0.753f, 0.753f, 0.753f, 1.0f); // Classic gray #c0c0c0
+            g_D3D.Clear(0.753f, 0.753f, 0.753f, 1.0f); 
+            ImGui_ImplDX11_NewFrame();
+            ImGui_ImplWin32_NewFrame();
+            ImGui::NewFrame();
             auto context = g_D3D.GetDeviceContext();
 			g_Renderer.Render(context, hWnd, g_Logic, g_Width, g_Height, g_Logic.GetWidth(), g_Logic.GetHeight());
+            //ImGui::ShowDemoWindow();
+            if (g_DebugUI.IsVisble())
+            {
+                g_DebugUI.Render(g_Logic);
+            }
+          
+            ImGui::Render();
+            ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
             g_D3D.Present();
         }
     }
@@ -101,13 +123,24 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    if (ImGui::GetCurrentContext() != nullptr) {
+        if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+            return true;
+    }
+  
     switch (message) {
+    case WM_CHAR: {
+		g_DebugUI.OnCharInput((wchar_t)wParam);
+        break;
+    }
     case WM_KEYDOWN:
+        if (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureKeyboard) break;
         if (wParam == VK_F2) {
             SendMessage(hWnd, WM_COMMAND, IDM_GAME_NEW, 0);
         }
         break;
     case WM_LBUTTONUP: {
+        if (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureKeyboard) break;
         int mouseX = LOWORD(lParam);
         int mouseY = HIWORD(lParam);
         
@@ -123,11 +156,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             if (g_Logic.GetStatus() == GameStatus::Won) {
                 CheckHighScore(hWnd);
             }
-            // -------------------------------------
+        
         }
         break;
     }
     case WM_RBUTTONDOWN: {
+        if (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureKeyboard) break;
         int gridX = (LOWORD(lParam) - OFFSET_X) / CELL_SIZE;
         int gridY = (HIWORD(lParam) - OFFSET_Y) / CELL_SIZE;
         if (gridX >= 0 && gridX < g_Logic.GetWidth() && gridY >= 0 && gridY < g_Logic.GetHeight()) {
@@ -136,6 +170,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         break;
     }
     case WM_MBUTTONUP: {
+        if (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureKeyboard) break;
         int gridX = (LOWORD(lParam) - OFFSET_X) / CELL_SIZE;
         int gridY = (HIWORD(lParam) - OFFSET_Y) / CELL_SIZE;
         if (gridX >= 0 && gridX < g_Logic.GetWidth() && gridY >= 0 && gridY < g_Logic.GetHeight()) {
@@ -197,7 +232,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         case IDM_GAME_EXIT:
             PostQuitMessage(0);
             break;
-        } // <--- 这个才是关闭 switch 的大括号
+        } 
         break;
 
     default:

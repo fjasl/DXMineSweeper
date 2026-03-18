@@ -133,7 +133,15 @@
   <ItemGroup>
     <ClCompile Include="AppMenu.cpp" />
     <ClCompile Include="D3DContext.cpp" />
+    <ClCompile Include="DebugUI.cpp" />
     <ClCompile Include="GameRender.cpp" />
+    <ClCompile Include="imgui\imgui.cpp" />
+    <ClCompile Include="imgui\imgui_demo.cpp" />
+    <ClCompile Include="imgui\imgui_draw.cpp" />
+    <ClCompile Include="imgui\imgui_impl_dx11.cpp" />
+    <ClCompile Include="imgui\imgui_impl_win32.cpp" />
+    <ClCompile Include="imgui\imgui_tables.cpp" />
+    <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MinesweeperLogic.cpp" />
     <ClCompile Include="SpriteBatch.cpp" />
@@ -142,7 +150,16 @@
   <ItemGroup>
     <ClInclude Include="AppMenu.h" />
     <ClInclude Include="D3DContext.h" />
+    <ClInclude Include="DebugUI.h" />
     <ClInclude Include="GameRender.h" />
+    <ClInclude Include="imgui\imconfig.h" />
+    <ClInclude Include="imgui\imgui.h" />
+    <ClInclude Include="imgui\imgui_impl_dx11.h" />
+    <ClInclude Include="imgui\imgui_impl_win32.h" />
+    <ClInclude Include="imgui\imgui_internal.h" />
+    <ClInclude Include="imgui\imstb_rectpack.h" />
+    <ClInclude Include="imgui\imstb_textedit.h" />
+    <ClInclude Include="imgui\imstb_truetype.h" />
     <ClInclude Include="MinesweeperLogic.h" />
     <ClInclude Include="SpriteBatch.h" />
     <ClInclude Include="TextureLoader.h" />
