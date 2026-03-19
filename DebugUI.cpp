@@ -91,6 +91,37 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
                 if (ImGui::RadioButton("60 FPS",    &m_fpsCap, 60)) {}
                 ImGui::SameLine();
                 if (ImGui::RadioButton("120 FPS",   &m_fpsCap, 120)) {}
+                ImGui::Separator();
+                ImGui::Checkbox("Enable Custom Cursor", &m_cursorSwitch);
+                ImGui::SameLine(); // 让按钮和 Checkbox 在同一行
+                if (ImGui::Button("Open Custom Cursor...")) {
+                    OPENFILENAMEW ofn;       // 公共对话框结构体
+                    wchar_t szFile[MAX_PATH] = { 0 }; // 接收路径的缓冲区
+                    // 初始化 OPENFILENAME
+                    ZeroMemory(&ofn, sizeof(ofn));
+                    ofn.lStructSize = sizeof(ofn);
+                    ofn.hwndOwner = NULL; // 如果此时没有 hWnd 指针，可以给 NULL
+                    ofn.lpstrFile = szFile;
+                    ofn.nMaxFile = sizeof(szFile) / sizeof(wchar_t);
+                    // 设置文件过滤器：只显示 .cur 和 .ani 系统光标文件
+                    ofn.lpstrFilter = L"Cursor Files (*.cur;*.ani)\0*.cur;*.ani\0All Files (*.*)\0*.*\0";
+                    ofn.nFilterIndex = 1;
+                    ofn.lpstrFileTitle = NULL;
+                    ofn.nMaxFileTitle = 0;
+                    ofn.lpstrInitialDir = NULL;
+                    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+                    // 显示打开文件对话框
+                    if (GetOpenFileNameW(&ofn) == TRUE) {
+                        // 用户选择了文件，保存路径
+                        m_cursorPath = szFile;
+                        m_isPathSelected = true;
+                        // 你可以在这里添加逻辑通知 main.cpp 重新加载光标
+                    }
+                }
+                // 可选：如果选定了路径，显示一下选定的文件名预览
+                if (m_isPathSelected) {
+                    ImGui::TextDisabled("Selected: %ls", m_cursorPath.c_str());
+                }
                 ImGui::EndTabItem();
             }
 

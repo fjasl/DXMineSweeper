@@ -151,12 +151,42 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    // 【修改点】将光标逻辑提前，拦截 ImGui 的默认行为
+    if (message == WM_SETCURSOR) {
+        // 只有当：选了自定义光标、在客户区、且鼠标没被 ImGui 占用时才处理
+        if (g_DebugUI.IsCursorSwitchEnabled() &&
+            LOWORD(lParam) == HTCLIENT &&
+            (ImGui::GetCurrentContext() == nullptr || !ImGui::GetIO().WantCaptureMouse))
+        {
+            static std::wstring lastLoadedPath = L"";
+            static HCURSOR hCurrentCustom = NULL;
+            std::wstring currentPath = g_DebugUI.GetCursorPath();
+            if (currentPath != lastLoadedPath || (hCurrentCustom == NULL && !currentPath.empty())) {
+                if (!currentPath.empty()) {
+                    hCurrentCustom = LoadCursorFromFileW(currentPath.c_str());
+                }
+                else {
+                    hCurrentCustom = NULL;
+                }
+                lastLoadedPath = currentPath;
+            }
+            if (hCurrentCustom != NULL) {
+                SetCursor(hCurrentCustom);
+                return TRUE;
+            }
+            else {
+                SetCursor(NULL);
+                return TRUE;
+            }
+        }
+    }
     if (ImGui::GetCurrentContext() != nullptr) {
         if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
             return true;
     }
   
     switch (message) {
+   
     case WM_CHAR: {
 		g_DebugUI.OnCharInput((wchar_t)wParam);
         break;

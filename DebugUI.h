@@ -12,7 +12,10 @@ public:
     void OnCharInput(wchar_t ch);
     bool IsVisible() const { return m_visible; };
     int  GetFpsCap()  const { return m_fpsCap; }  // 0=无限 60=60fps 120=120fps
+    std::wstring GetCursorPath() const { return m_cursorPath; }
+    bool IsCursorSwitchEnabled() const { return m_cursorSwitch; }
 private:
+
 	bool m_visible = false; 
     bool m_showMines = false;
     std::wstring m_inputBuffer;
@@ -24,6 +27,11 @@ private:
     double m_lastStepTime = 0.0;   
     bool m_crossSwitch = false; 
     float m_crossColor[3] = { 1.0f, 0.0f, 0.0f };
+
+    bool m_cursorSwitch = false;
+    std::wstring m_cursorPath = L"";
+    bool m_isPathSelected = false;
+
     int  m_fpsCap = 0;  // 0=无限 60=60fps 120=120fps
     void PerformAutoStep(MinesweeperLogic& logic);
 };
