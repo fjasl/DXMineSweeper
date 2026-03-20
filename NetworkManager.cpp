@@ -37,7 +37,7 @@ bool NetworkManager::Connect(const wchar_t* ip, int port) {
         }
     }
 
-    u_long mode = 1; // ÉèÎª·Ç×èÈû
+    u_long mode = 1; // è®¾ä¸ºéé˜»å¡
     ioctlsocket(m_socket, FIONBIO, &mode);
     return true;
 }

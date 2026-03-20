@@ -10,7 +10,7 @@ public:
     ~D3DContext();
 
     bool Initialize(HWND hWnd, int width, int height);
-    bool Resize(int width, int height); // Ìí¼ÓÕâÒ»ÐÐ
+    bool Resize(int width, int height); // æ·»åŠ è¿™ä¸€è¡Œ
     void Clear(float r, float g, float b, float a);
     void Present();
     bool InitImGui(HWND hWnd);

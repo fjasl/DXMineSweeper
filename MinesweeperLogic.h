@@ -3,13 +3,13 @@
 
 enum class GameStatus { Playing, Won, Lost };
 
-// --- ¾­µäÎ»²¼¾Ö³£Á¿ ---
-#define STATE_QUESTION 0x08  // Ôö¼ÓÎÊºÅ×´Ì¬Î» (0x08)
-#define STATE_MINE    0x10  // µØÀ×
-#define STATE_OPEN    0x20  // ÒÑ´ò¿ª
-#define STATE_FLAG    0x40  // ÒÑ²åÆì
-#define STATE_ERROR   0x80  // ±¬Õ¨»ò±ê×¢´íÎó
-#define MASK_COUNT    0x0F  // µÍ4Î»´æ´¢ÖÜÎ§À×Êı (0-8)
+// --- ç»å…¸ä½å¸ƒå±€å¸¸é‡ ---
+#define STATE_QUESTION 0x08  // å¢åŠ é—®å·çŠ¶æ€ä½ (0x08)
+#define STATE_MINE    0x10  // åœ°é›·
+#define STATE_OPEN    0x20  // å·²æ‰“å¼€
+#define STATE_FLAG    0x40  // å·²æ’æ——
+#define STATE_ERROR   0x80  // çˆ†ç‚¸æˆ–æ ‡æ³¨é”™è¯¯
+#define MASK_COUNT    0x0F  // ä½4ä½å­˜å‚¨å‘¨å›´é›·æ•° (0-8)
 
 class MinesweeperLogic {
     friend class DebugUI;
@@ -32,7 +32,7 @@ public:
 
     void UpdateTimer();
 
-    // ÊÊÅääÖÈ¾Æ÷µÄ¸¨Öúº¯Êı
+    // é€‚é…æ¸²æŸ“å™¨çš„è¾…åŠ©å‡½æ•°
     bool IsMine(int x, int y) const { return m_board[y * m_width + x] & STATE_MINE; }
     bool IsRevealed(int x, int y) const { return m_board[y * m_width + x] & STATE_OPEN; }
     bool IsFlagged(int x, int y) const { return m_board[y * m_width + x] & STATE_FLAG; }
@@ -41,7 +41,7 @@ public:
     int GetNeighborCount(int x, int y) const { return m_board[y * m_width + x] & MASK_COUNT; }
 
 private:
-    void PlaceMines(); // ÏÖÔÚ²»ĞèÒª²ÎÊı£¬¿ª¾Ö¼´Éú³É
+    void PlaceMines(); // ç°åœ¨ä¸éœ€è¦å‚æ•°ï¼Œå¼€å±€å³ç”Ÿæˆ
     void FloodFill(int x, int y);
     void CheckWin();
     bool IsInBounds(int x, int y) const;
@@ -49,7 +49,7 @@ private:
     int CountNeighborFlags(int x, int y) const; 
 
     int m_width, m_height, m_mines;
-    unsigned char m_board[2500]; // ¾²Ì¬ÄÚ´æ³Ø (×î´óÖ§³Ö 50x50)
+    unsigned char m_board[2500]; // é™æ€å†…å­˜æ±  (æœ€å¤§æ”¯æŒ 50x50)
 
     GameStatus m_status;
     int m_flagsPlaced;

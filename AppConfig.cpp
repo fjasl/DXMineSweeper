@@ -1,7 +1,7 @@
 #include "AppConfig.h"
 #include <fstream>
 
-// 全局变量定义
+// 鍏ㄥ眬鍙橀噺瀹氫箟
 GameConfig g_Config;
 const char* CONFIG_FILE = "config.bin";
 
