@@ -1,5 +1,7 @@
 #include "GameRender.h"
 #include "TextureLoader.h"
+#include "imgui/imgui.h"
+#include "AppConfig.h"
 
 bool GameRenderer::Initialize(ID3D11Device* device) {
     if (!m_Sprites.Initialize(device)) {
@@ -193,5 +195,32 @@ void GameRenderer::Render(ID3D11DeviceContext* context, HWND hWnd, MinesweeperLo
                      (float)CELL_SIZE, (float)CELL_SIZE);
              }
          }
-         m_Sprites.End();
+
+          // 4. Draw Selection Indicator (Refactored: Prominent border with customizable color)
+          if (logic.GetStatus() == GameStatus::Playing && g_Config.showSelBox) {
+              int selX = logic.GetSelX();
+              int selY = logic.GetSelY();
+              float drawX = (float)(OFFSET_X + selX * CELL_SIZE);
+              float drawY = (float)(OFFSET_Y + selY * CELL_SIZE);
+
+              // Use ImGui background draw list to support customizable colors easily
+              ImDrawList* drawList = ImGui::GetBackgroundDrawList();
+              ImU32 col = IM_COL32(
+                  (int)(g_Config.selColor[0] * 255),
+                  (int)(g_Config.selColor[1] * 255),
+                  (int)(g_Config.selColor[2] * 255),
+                  255
+              );
+              
+              drawList->AddRect(
+                  ImVec2(drawX, drawY),
+                  ImVec2(drawX + CELL_SIZE, drawY + CELL_SIZE),
+                  col,
+                  0.0f,
+                  0,
+                  2.0f // 2px thickness
+              );
+          }
+
+          m_Sprites.End();
 }

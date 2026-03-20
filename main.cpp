@@ -193,10 +193,52 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     }
     case WM_KEYDOWN:
         if (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureKeyboard) break;
+        if (g_DebugUI.HandleKey((int)wParam)) break;
         if (wParam == VK_F2) {
             SendMessage(hWnd, WM_COMMAND, IDM_GAME_NEW, 0);
         }
+        else if (wParam == g_Config.keyUp) {
+            g_Logic.MoveSelection(0, -1);
+        }
+        else if (wParam == g_Config.keyDown) {
+            g_Logic.MoveSelection(0, 1);
+        }
+        else if (wParam == g_Config.keyLeft) {
+            g_Logic.MoveSelection(-1, 0);
+        }
+        else if (wParam == g_Config.keyRight) {
+            g_Logic.MoveSelection(1, 0);
+        }
+        else if (wParam == g_Config.keyReveal) {
+            if (g_Logic.GetStatus() == GameStatus::Playing) {
+                int selX = g_Logic.GetSelX();
+                int selY = g_Logic.GetSelY();
+                g_Logic.RevealCell(selX, selY);
+                if (g_Logic.GetStatus() == GameStatus::Lost) {
+                    PlayGameSound(SoundEvent::Explode);
+                }
+                else if (g_Logic.GetStatus() == GameStatus::Won) {
+                    PlayGameSound(SoundEvent::Win);
+                    CheckHighScore(hWnd);
+                }
+            }
+        }
+        else if (wParam == g_Config.keyFlag) {
+            if (g_Logic.GetStatus() == GameStatus::Playing) {
+                g_Logic.ToggleFlag(g_Logic.GetSelX(), g_Logic.GetSelY());
+            }
+        }
         break;
+    case WM_MOUSEMOVE: {
+        if (g_Config.followMouse) {
+            int gridX = (LOWORD(lParam) - OFFSET_X) / CELL_SIZE;
+            int gridY = (HIWORD(lParam) - OFFSET_Y) / CELL_SIZE;
+            if (gridX >= 0 && gridX < g_Logic.GetWidth() && gridY >= 0 && gridY < g_Logic.GetHeight()) {
+                g_Logic.SetSelection(gridX, gridY);
+            }
+        }
+        break;
+    }
     case WM_LBUTTONUP: {
         if (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureKeyboard) break;
         int mouseX = LOWORD(lParam);

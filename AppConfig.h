@@ -14,6 +14,17 @@ struct GameConfig {
     // 3. 游戏偏好
     bool useMarks = true;
 
+    // 4. 按键设置
+    int keyUp = 'K';
+    int keyDown = 'J';
+    int keyLeft = 'H';
+    int keyRight = 'L';
+    int keyReveal = 'U';
+    int keyFlag = 'I';
+    float selColor[3] = { 1.0f, 0.0f, 0.0f };
+    bool showSelBox = true;
+    bool followMouse = true;
+
     // (可选) 如果想保存进度，可以在这里增加棋盘数组
     // unsigned char savedBoard[2500];
 };

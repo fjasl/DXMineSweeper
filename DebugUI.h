@@ -14,6 +14,9 @@ public:
     int  GetFpsCap()  const { return m_fpsCap; }  // 0=无限 60=60fps 120=120fps
     std::wstring GetCursorPath() const { return m_cursorPath; }
     bool IsCursorSwitchEnabled() const { return m_cursorSwitch; }
+
+    bool HandleKey(int vk); // Returns true if it consumed the key
+    bool IsEditingKey() const { return m_keyToEdit != -1; }
 private:
 
 	bool m_visible = false; 
@@ -34,4 +37,6 @@ private:
 
     int  m_fpsCap = 0;  // 0=无限 60=60fps 120=120fps
     void PerformAutoStep(MinesweeperLogic& logic);
+
+    int m_keyToEdit = -1; // -1: None, 0: Up, 1: Down, 2: Left, 3: Right, 4: Reveal, 5: Flag
 };

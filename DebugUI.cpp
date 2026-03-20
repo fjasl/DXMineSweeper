@@ -1,5 +1,7 @@
 #include "DebugUI.h"
 #include "imgui/imgui.h"
+#include "AppConfig.h"
+#include <windows.h>
 
 void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& renderer) {
   
@@ -122,6 +124,12 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
                 if (m_isPathSelected) {
                     ImGui::TextDisabled("Selected: %ls", m_cursorPath.c_str());
                 }
+                ImGui::Separator();
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "Selection Box Setting:");
+                ImGui::Checkbox("Show Selection Box", &g_Config.showSelBox);
+                ImGui::Checkbox("Follow Mouse", &g_Config.followMouse);
+                ImGui::ColorEdit3("Selection Color", g_Config.selColor);
+
                 ImGui::EndTabItem();
             }
 
@@ -174,6 +182,55 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
                     }
                 } else {
                     ImGui::TextDisabled("CurrentLocation: -- (out of board)");
+                }
+
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Controls")) {
+                auto& cfg = g_Config;
+                const char* actions[] = { "Move Up", "Move Down", "Move Left", "Move Right", "Reveal", "Flag" };
+                int* keys[] = { &cfg.keyUp, &cfg.keyDown, &cfg.keyLeft, &cfg.keyRight, &cfg.keyReveal, &cfg.keyFlag };
+
+                for (int i = 0; i < 6; i++) {
+                    ImGui::PushID(i);
+                    ImGui::Text("%s:", actions[i]);
+                    ImGui::SameLine(120);
+
+                    char buf[64];
+                    if (m_keyToEdit == i) {
+                        strcpy_s(buf, "<Press any key...>");
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+                    }
+                    else {
+                        // Get key name
+                        UINT scanCode = MapVirtualKeyW(*keys[i], MAPVK_VK_TO_VSC);
+                        wchar_t name[64];
+                        if (GetKeyNameTextW(scanCode << 16, name, 64)) {
+                            size_t converted = 0;
+                            char nname[64];
+                            wcstombs_s(&converted, nname, name, 64);
+                            strcpy_s(buf, nname);
+                        }
+                        else {
+                            sprintf_s(buf, "Key %d", *keys[i]);
+                        }
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.4f, 0.6f, 1.0f));
+                    }
+
+                    if (ImGui::Button(buf, ImVec2(150, 0))) {
+                        m_keyToEdit = i;
+                    }
+                    ImGui::PopStyleColor();
+                    ImGui::PopID();
+                }
+
+                if (m_keyToEdit != -1) {
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Waiting for input... Press ESC to cancel.");
+                    if (ImGui::IsKeyPressed(ImGuiKey_Escape)) m_keyToEdit = -1;
+                }
+                
+                if (ImGui::Button("Save Config")) {
+                    SaveAppConfig();
                 }
 
                 ImGui::EndTabItem();
@@ -278,4 +335,19 @@ void DebugUI::PerformAutoStep(MinesweeperLogic& logic) {
     }
     
     m_autoSolve = false;
+}
+
+bool DebugUI::HandleKey(int vk) {
+    if (m_keyToEdit != -1) {
+        if (vk == VK_ESCAPE) {
+            m_keyToEdit = -1;
+            return true;
+        }
+
+        int* keys[] = { &g_Config.keyUp, &g_Config.keyDown, &g_Config.keyLeft, &g_Config.keyRight, &g_Config.keyReveal, &g_Config.keyFlag };
+        *keys[m_keyToEdit] = vk;
+        m_keyToEdit = -1;
+        return true;
+    }
+    return false;
 }

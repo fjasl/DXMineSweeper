@@ -39,6 +39,12 @@ public:
     bool IsExploded(int x, int y) const { return m_board[y * m_width + x] & STATE_ERROR; }
     bool IsQuestioned(int x, int y) const { return m_board[y * m_width + x] & STATE_QUESTION; }
     int GetNeighborCount(int x, int y) const { return m_board[y * m_width + x] & MASK_COUNT; }
+    
+    // 键盘选中框位置
+    int GetSelX() const { return m_selX; }
+    int GetSelY() const { return m_selY; }
+    void MoveSelection(int dx, int dy);
+    void SetSelection(int x, int y) { m_selX = x; m_selY = y; }
 
 private:
     void PlaceMines(); // 现在不需要参数，开局即生成
@@ -55,4 +61,7 @@ private:
     int m_flagsPlaced;
     int m_cellsRevealed;
     int m_seconds;
+
+    int m_selX = 0;
+    int m_selY = 0;
 };

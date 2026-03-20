@@ -23,6 +23,8 @@ void MinesweeperLogic::StartNewGame() {
     m_flagsPlaced = 0;
     m_cellsRevealed = 0;
     m_seconds = 0;
+    m_selX = 0;
+    m_selY = 0;
 
     PlaceMines(); // 立即布雷，不再等待第一次点击
 }
@@ -184,4 +186,14 @@ void MinesweeperLogic::UpdateTimer() {
         m_seconds++;
         if (m_seconds > 999) m_seconds = 999;
     }
+}
+
+void MinesweeperLogic::MoveSelection(int dx, int dy) {
+    m_selX += dx;
+    m_selY += dy;
+
+    if (m_selX < 0) m_selX = 0;
+    if (m_selX >= m_width) m_selX = m_width - 1;
+    if (m_selY < 0) m_selY = 0;
+    if (m_selY >= m_height) m_selY = m_height - 1;
 }
