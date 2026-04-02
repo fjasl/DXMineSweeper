@@ -74,8 +74,18 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
     g_Width = g_Config.lastWidth;
     g_Height = g_Config.lastHeight;
     int mines = g_Config.lastMines;
-    
     g_Logic.SetLevel(g_Width, g_Height, mines);
+    
+    g_bMarks = g_Config.useMarks;
+    g_bColor = g_Config.useColor;
+    g_bSound = g_Config.useSound;
+    
+    // 从 Config 同步游戏排行榜
+    for (int i = 0; i < 3; i++) {
+        g_HighScores[i].time = g_Config.bestTime[i];
+        MultiByteToWideChar(CP_UTF8, 0, g_Config.bestName[i], -1, g_HighScores[i].name, 32);
+    }
+
     if (g_Config.hasSavedGame && g_Config.autoSaveProgress) {
         g_Logic.LoadStateFromConfig();
     }
@@ -341,7 +351,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         break;
     }
     case WM_TIMER:
-        if (g_Logic.GetStatus() == GameStatus::Playing) {
+        if (g_Logic.IsTimerActive()) {
             PlayGameSound(SoundEvent::Tick);
         }
         g_Logic.UpdateTimer();
@@ -395,16 +405,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
         case IDM_GAME_MARKS:
             g_bMarks = !g_bMarks;
+            g_Config.useMarks = g_bMarks;
+            SaveAppConfig();
             UpdateMenuCheck(hWnd);
             break;
 
         case IDM_GAME_COLOR:
             g_bColor = !g_bColor;
+            g_Config.useColor = g_bColor;
+            SaveAppConfig();
             UpdateMenuCheck(hWnd);
             break;
 
         case IDM_GAME_SOUND:
             g_bSound = !g_bSound;
+            g_Config.useSound = g_bSound;
+            SaveAppConfig();
             UpdateMenuCheck(hWnd);
             break;
 

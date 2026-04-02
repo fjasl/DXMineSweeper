@@ -4,6 +4,7 @@
 #include "AppMenu.h"
 #include "MinesweeperLogic.h"
 #include "UIConstants.h"
+#include "AppConfig.h"
 
 extern MinesweeperLogic g_Logic;
 extern void ChangeLevel(HWND hWnd, int w, int h, int m);
@@ -203,7 +204,14 @@ INT_PTR CALLBACK BestTimesProc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam
     case WM_COMMAND:
         if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) EndDialog(hDlg, IDOK);
         if (LOWORD(wParam) == 107) {
-            for (int i = 0; i < 3; i++) { g_HighScores[i].time = 999; wcscpy_s(g_HighScores[i].name, 32, L"\x533f\x540d"); }
+            for (int i = 0; i < 3; i++) { 
+                g_HighScores[i].time = 999; 
+                wcscpy_s(g_HighScores[i].name, 32, L"\x533f\x540d"); 
+                
+                g_Config.bestTime[i] = 999;
+                WideCharToMultiByte(CP_UTF8, 0, g_HighScores[i].name, -1, g_Config.bestName[i], 32, NULL, NULL);
+            }
+            SaveAppConfig();
             EndDialog(hDlg, 107);
         }
         return TRUE;
@@ -283,6 +291,11 @@ void CheckHighScore(HWND hWnd) {
         g_HighScores[idx].time = g_Logic.GetTime();
         void* pT = CreateRecordScoreTemplate(idx);
         DialogBoxIndirectParamW(GetModuleHandle(NULL), (LPCDLGTEMPLATEW)pT, hWnd, RecordScoreProc, (LPARAM)idx);
+        
+        g_Config.bestTime[idx] = g_HighScores[idx].time;
+        WideCharToMultiByte(CP_UTF8, 0, g_HighScores[idx].name, -1, g_Config.bestName[idx], 32, NULL, NULL);
+        SaveAppConfig();
+        
         SendMessage(hWnd, WM_COMMAND, IDM_GAME_BEST_TIMES, 0);
     }
 }

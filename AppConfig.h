@@ -13,6 +13,10 @@ struct GameConfig {
 
     // 3. 游戏偏好
     bool useMarks = true;
+    bool useColor = true;
+    bool useSound = false;
+    bool useCrosshair = false;
+    float crossColor[3] = { 1.0f, 0.0f, 0.0f };
     float uiScale = 1.0f;
     float windowScale = 1.0f;
     bool enableKeyboard = true;

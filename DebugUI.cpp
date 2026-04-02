@@ -73,10 +73,11 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
             
             if (ImGui::BeginTabItem("Graphics")) {
                
-                ImGui::Checkbox("Enable Cross Locate", &m_crossSwitch);
-                if (ImGui::ColorEdit3("Clear Color",m_crossColor)) {
-
+                if (ImGui::Checkbox("Enable Cross Locate", &g_Config.useCrosshair)) {
+                    SaveAppConfig();
                 }
+                if (ImGui::ColorEdit3("Crosshair Color", g_Config.crossColor)) {}
+                if (ImGui::IsItemDeactivatedAfterEdit()) SaveAppConfig();
                 ImGui::Separator();
                 ImGui::Text("Device Address: %p", d3d.GetDevice());
                 ImGui::Text("Context Address: %p", d3d.GetDeviceContext());
@@ -140,7 +141,8 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
                 ImGui::TextColored(ImVec4(1, 1, 0, 1), "Selection Box Setting:");
                 ImGui::Checkbox("Show Selection Box", &g_Config.showSelBox);
                 ImGui::Checkbox("Follow Mouse", &g_Config.followMouse);
-                ImGui::ColorEdit3("Selection Color", g_Config.selColor);
+                if (ImGui::ColorEdit3("Selection Color", g_Config.selColor)) {}
+                if (ImGui::IsItemDeactivatedAfterEdit()) SaveAppConfig();
 
                 ImGui::EndTabItem();
             }
@@ -292,47 +294,30 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
             m_lastStepTime = currentTime;
         }
     }
-    if (m_crossSwitch)
+    if (g_Config.useCrosshair)
     {
         ImDrawList* drawList = ImGui::GetBackgroundDrawList();
         ImVec2 mousePos = ImGui::GetMousePos();
         ImVec2 displaySize = ImGui::GetIO().DisplaySize;
 
-       
-        ImU32 lineColor = IM_COL32(
-            (int)(m_crossColor[0] * 255),
-            (int)(m_crossColor[1] * 255),
-            (int)(m_crossColor[2] * 255),
-            255 // Opaque
+        ImU32 coreColor = IM_COL32(
+            (int)(g_Config.crossColor[0] * 255),
+            (int)(g_Config.crossColor[1] * 255),
+            (int)(g_Config.crossColor[2] * 255),
+            255
         );
-        ImU32 shadowColor = IM_COL32(0, 0, 0, 180); // Drop shadow
-        float lineThickness = 2.0f * g_Config.uiScale; // Thicker and scales with UI
+        // 背景描边色保护线条能在任何颜色上清晰可见
+        ImU32 outlineColor = IM_COL32(0, 0, 0, 140);
 
-        // Draw shadow first
-        drawList->AddLine(
-            ImVec2(0.0f, mousePos.y + 1.0f * g_Config.uiScale),
-            ImVec2(displaySize.x, mousePos.y + 1.0f * g_Config.uiScale),
-            shadowColor, lineThickness
-        );
-        drawList->AddLine(
-            ImVec2(mousePos.x + 1.0f * g_Config.uiScale, 0.0f),
-            ImVec2(mousePos.x + 1.0f * g_Config.uiScale, displaySize.y),
-            shadowColor, lineThickness
-        );
+        float s = g_Config.uiScale;
 
-        // Horizontal line
-        drawList->AddLine(
-            ImVec2(0.0f,          mousePos.y),
-            ImVec2(displaySize.x, mousePos.y),
-            lineColor, lineThickness
-        );
+        // 垂直/水平背景描边层 (黑边)
+        drawList->AddLine(ImVec2(0.0f, mousePos.y), ImVec2(displaySize.x, mousePos.y), outlineColor, 3.0f * s);
+        drawList->AddLine(ImVec2(mousePos.x, 0.0f), ImVec2(mousePos.x, displaySize.y), outlineColor, 3.0f * s);
 
-        // Vertical line
-        drawList->AddLine(
-            ImVec2(mousePos.x, 0.0f),
-            ImVec2(mousePos.x, displaySize.y),
-            lineColor, lineThickness
-        );
+        // 垂直/水平高精核心层 (纯色)
+        drawList->AddLine(ImVec2(0.0f, mousePos.y), ImVec2(displaySize.x, mousePos.y), coreColor, 1.0f * s);
+        drawList->AddLine(ImVec2(mousePos.x, 0.0f), ImVec2(mousePos.x, displaySize.y), coreColor, 1.0f * s);
     }
 }
 

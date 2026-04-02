@@ -219,10 +219,14 @@ int MinesweeperLogic::CountNeighborFlags(int x, int y) const {
 }
 
 void MinesweeperLogic::UpdateTimer() {
-    if (m_status == GameStatus::Playing && m_cellsRevealed > 0 && !m_waitingForInput) {
+    if (IsTimerActive()) {
         m_seconds++;
         if (m_seconds > 999) m_seconds = 999;
     }
+}
+
+bool MinesweeperLogic::IsTimerActive() const {
+    return m_status == GameStatus::Playing && m_cellsRevealed > 0 && !m_waitingForInput;
 }
 
 void MinesweeperLogic::MoveSelection(int dx, int dy) {

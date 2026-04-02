@@ -33,6 +33,7 @@ public:
     int GetFlags() const { return m_flagsPlaced; }
 
     void UpdateTimer();
+    bool IsTimerActive() const;
 
     // 适配渲染器的辅助函数
     bool IsMine(int x, int y) const { return m_board[y * m_width + x] & STATE_MINE; }
