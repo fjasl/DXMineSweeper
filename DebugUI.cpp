@@ -94,6 +94,10 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
                     SaveAppConfig();
                 }
                 ImGui::Separator();
+                if (ImGui::Checkbox("Auto-Save Game Progress", &g_Config.autoSaveProgress)) {
+                    SaveAppConfig();
+                }
+                ImGui::Separator();
                 ImGui::TextColored(ImVec4(1, 1, 0, 1), "FPS Cap:");
                 ImGui::SameLine();
                 if (ImGui::RadioButton("Unlimited", &m_fpsCap, 0)) {}

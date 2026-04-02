@@ -28,6 +28,7 @@ void MinesweeperLogic::StartNewGame() {
     m_seconds = 0;
     m_selX = 0;
     m_selY = 0;
+    m_waitingForInput = false;
 
     PlaceMines(); // 立即布雷，不再等待第一次点击
 }
@@ -49,6 +50,7 @@ void MinesweeperLogic::LoadStateFromConfig() {
     m_cellsRevealed = g_Config.savedCellsRevealed;
     m_status = static_cast<GameStatus>(g_Config.savedStatus);
     memcpy(m_board, g_Config.savedBoard, sizeof(m_board));
+    m_waitingForInput = true;
 }
 
 
@@ -76,6 +78,7 @@ void MinesweeperLogic::PlaceMines() {
 void MinesweeperLogic::RevealCell(int x, int y) {
     if (!IsInBounds(x, y) || m_status != GameStatus::Playing) return;
 
+    m_waitingForInput = false;
     unsigned short& cell = m_board[y * m_width + x];
     if ((cell & STATE_OPEN) || (cell & STATE_FLAG)) return;
 
@@ -132,6 +135,8 @@ void MinesweeperLogic::FloodFill(int startX, int startY) {
 extern bool g_bMarks; // 引用外部的标记开关
 void MinesweeperLogic::ToggleFlag(int x, int y) {
     if (!IsInBounds(x, y) || m_status != GameStatus::Playing) return;
+    
+    m_waitingForInput = false;
     unsigned short& cell = m_board[y * m_width + x];
     if (cell & STATE_OPEN) return; // 已经打开的不能标记
     // --- 三态循环逻辑 ---
@@ -156,6 +161,8 @@ void MinesweeperLogic::ToggleFlag(int x, int y) {
 
 void MinesweeperLogic::TryChord(int x, int y) {
     if (!IsInBounds(x, y) || !(m_board[y * m_width + x] & STATE_OPEN)) return;
+    
+    m_waitingForInput = false;
     int mines = m_board[y * m_width + x] & MASK_COUNT;
     if (mines > 0 && mines == CountNeighborFlags(x, y)) {
         for (int dy = -1; dy <= 1; ++dy) {
@@ -212,7 +219,7 @@ int MinesweeperLogic::CountNeighborFlags(int x, int y) const {
 }
 
 void MinesweeperLogic::UpdateTimer() {
-    if (m_status == GameStatus::Playing && m_cellsRevealed > 0) {
+    if (m_status == GameStatus::Playing && m_cellsRevealed > 0 && !m_waitingForInput) {
         m_seconds++;
         if (m_seconds > 999) m_seconds = 999;
     }

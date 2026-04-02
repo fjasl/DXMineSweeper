@@ -29,6 +29,7 @@ struct GameConfig {
     bool followMouse = true;
 
     // 5. 进行中的游戏状态保存
+    bool autoSaveProgress = false;
     bool hasSavedGame = false;
     int savedSeconds = 0;
     int savedFlagsPlaced = 0;

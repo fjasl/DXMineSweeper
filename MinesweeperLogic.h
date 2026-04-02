@@ -66,4 +66,5 @@ private:
 
     int m_selX = 0;
     int m_selY = 0;
+    bool m_waitingForInput = false;
 };

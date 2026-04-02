@@ -76,7 +76,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
     int mines = g_Config.lastMines;
     
     g_Logic.SetLevel(g_Width, g_Height, mines);
-    if (g_Config.hasSavedGame) {
+    if (g_Config.hasSavedGame && g_Config.autoSaveProgress) {
         g_Logic.LoadStateFromConfig();
     }
     UpdateSize();
@@ -352,7 +352,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         g_Config.lastHeight = g_Logic.GetHeight();
         g_Config.lastMines = g_Logic.GetTotalMines();
 
-        g_Logic.SaveStateToConfig();
+        if (g_Config.autoSaveProgress) {
+            g_Logic.SaveStateToConfig();
+        } else {
+            g_Config.hasSavedGame = false;
+        }
 
         SaveAppConfig(); // 保存到磁盘
         PostQuitMessage(0);
