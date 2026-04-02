@@ -37,7 +37,7 @@ bool NetworkManager::Connect(const wchar_t* ip, int port) {
         }
     }
 
-    u_long mode = 1; // 设为非阻塞
+    u_long mode = 1; //非阻塞模式
     ioctlsocket(m_socket, FIONBIO, &mode);
     return true;
 }
