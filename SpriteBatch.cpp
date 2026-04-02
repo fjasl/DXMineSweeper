@@ -96,10 +96,10 @@ bool SpriteBatch::Initialize(ID3D11Device* device) {
     return true;
 }
 
-void SpriteBatch::Begin(ID3D11DeviceContext* context, int screenWidth, int screenHeight) {
-    if (screenWidth <= 0 || screenHeight <= 0) return;
+void SpriteBatch::Begin(ID3D11DeviceContext* context, int viewportWidth, int viewportHeight, int logicalWidth, int logicalHeight) {
+    if (viewportWidth <= 0 || viewportHeight <= 0 || logicalWidth <= 0 || logicalHeight <= 0) return;
 
-    D3D11_VIEWPORT vp = { 0.0f, 0.0f, (float)screenWidth, (float)screenHeight, 0.0f, 1.0f };
+    D3D11_VIEWPORT vp = { 0.0f, 0.0f, (float)viewportWidth, (float)viewportHeight, 0.0f, 1.0f };
     context->RSSetViewports(1, &vp);
 
     context->IASetInputLayout(m_layout.Get());
@@ -112,7 +112,7 @@ void SpriteBatch::Begin(ID3D11DeviceContext* context, int screenWidth, int scree
 
     CB cb;
     // Use row_major in shader + VS mul(v, M) to match XMMatrixOrthographicOffCenterLH directly
-    cb.projection = XMMatrixOrthographicOffCenterLH(0, (float)screenWidth, (float)screenHeight, 0, 0, 1);
+    cb.projection = XMMatrixOrthographicOffCenterLH(0, (float)logicalWidth, (float)logicalHeight, 0, 0, 1);
     
     D3D11_MAPPED_SUBRESOURCE mapped;
     if (SUCCEEDED(context->Map(m_constantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {

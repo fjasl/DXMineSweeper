@@ -6,7 +6,7 @@
 class DebugUI {
 public:
 
-    void Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& renderer);
+    void Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& renderer, float scaleX, float scaleY);
 
     bool IsShowMinesEnabled() const { return m_showMines; }
     void OnCharInput(wchar_t ch);

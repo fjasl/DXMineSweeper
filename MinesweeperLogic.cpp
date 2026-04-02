@@ -1,6 +1,9 @@
 #include "MinesweeperLogic.h"
+#include "AppConfig.h"
 #include <algorithm>
 #include <ctime>
+#include <queue>
+#include <cstring>
 
 
 
@@ -29,6 +32,25 @@ void MinesweeperLogic::StartNewGame() {
     PlaceMines(); // 立即布雷，不再等待第一次点击
 }
 
+void MinesweeperLogic::SaveStateToConfig() {
+    g_Config.hasSavedGame = true;
+    g_Config.savedSeconds = m_seconds;
+    g_Config.savedFlagsPlaced = m_flagsPlaced;
+    g_Config.savedCellsRevealed = m_cellsRevealed;
+    g_Config.savedStatus = (int)m_status;
+    memcpy(g_Config.savedBoard, m_board, sizeof(m_board));
+}
+
+void MinesweeperLogic::LoadStateFromConfig() {
+    if (!g_Config.hasSavedGame) return;
+    
+    m_seconds = g_Config.savedSeconds;
+    m_flagsPlaced = g_Config.savedFlagsPlaced;
+    m_cellsRevealed = g_Config.savedCellsRevealed;
+    m_status = static_cast<GameStatus>(g_Config.savedStatus);
+    memcpy(m_board, g_Config.savedBoard, sizeof(m_board));
+}
+
 
 void MinesweeperLogic::PlaceMines() {
     int placed = 0;
@@ -54,7 +76,7 @@ void MinesweeperLogic::PlaceMines() {
 void MinesweeperLogic::RevealCell(int x, int y) {
     if (!IsInBounds(x, y) || m_status != GameStatus::Playing) return;
 
-    unsigned char& cell = m_board[y * m_width + x];
+    unsigned short& cell = m_board[y * m_width + x];
     if ((cell & STATE_OPEN) || (cell & STATE_FLAG)) return;
 
     cell |= STATE_OPEN;
@@ -79,19 +101,27 @@ void MinesweeperLogic::RevealCell(int x, int y) {
 }
 
 
-void MinesweeperLogic::FloodFill(int x, int y) {
-    for (int dy = -1; dy <= 1; ++dy) {
-        for (int dx = -1; dx <= 1; ++dx) {
-            if (dx == 0 && dy == 0) continue;
-            int nx = x + dx;
-            int ny = y + dy;
-            if (IsInBounds(nx, ny)) {
-                unsigned char& neighbor = m_board[ny * m_width + nx];
-                if (!(neighbor & STATE_OPEN) && !(neighbor & STATE_FLAG)) {
-                    neighbor |= STATE_OPEN;
-                    m_cellsRevealed++;
-                    if ((neighbor & MASK_COUNT) == 0 && !(neighbor & STATE_MINE)) {
-                        FloodFill(nx, ny);
+void MinesweeperLogic::FloodFill(int startX, int startY) {
+    std::queue<std::pair<int, int>> q;
+    q.push({startX, startY});
+
+    while (!q.empty()) {
+        auto [x, y] = q.front();
+        q.pop();
+
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                if (dx == 0 && dy == 0) continue;
+                int nx = x + dx;
+                int ny = y + dy;
+                if (IsInBounds(nx, ny)) {
+                    unsigned short& neighbor = m_board[ny * m_width + nx];
+                    if (!(neighbor & STATE_OPEN) && !(neighbor & STATE_FLAG)) {
+                        neighbor |= STATE_OPEN;
+                        m_cellsRevealed++;
+                        if ((neighbor & MASK_COUNT) == 0 && !(neighbor & STATE_MINE)) {
+                            q.push({nx, ny});
+                        }
                     }
                 }
             }
@@ -102,7 +132,7 @@ void MinesweeperLogic::FloodFill(int x, int y) {
 extern bool g_bMarks; // 引用外部的标记开关
 void MinesweeperLogic::ToggleFlag(int x, int y) {
     if (!IsInBounds(x, y) || m_status != GameStatus::Playing) return;
-    unsigned char& cell = m_board[y * m_width + x];
+    unsigned short& cell = m_board[y * m_width + x];
     if (cell & STATE_OPEN) return; // 已经打开的不能标记
     // --- 三态循环逻辑 ---
     if (cell & STATE_FLAG) {

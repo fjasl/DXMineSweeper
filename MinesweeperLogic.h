@@ -4,12 +4,12 @@
 enum class GameStatus { Playing, Won, Lost };
 
 // --- 经典位布局常量 ---
-#define STATE_QUESTION 0x08  // 增加问号状态位 (0x08)
-#define STATE_MINE    0x10  // 地雷
-#define STATE_OPEN    0x20  // 已打开
-#define STATE_FLAG    0x40  // 已插旗
-#define STATE_ERROR   0x80  // 爆炸或标注错误
-#define MASK_COUNT    0x0F  // 低4位存储周围雷数 (0-8)
+#define STATE_MINE      0x0010  // 地雷
+#define STATE_OPEN      0x0020  // 已打开
+#define STATE_FLAG      0x0040  // 已插旗
+#define STATE_ERROR     0x0080  // 爆炸或标注错误
+#define STATE_QUESTION  0x0100  // 增加问号状态位 (0x0100)
+#define MASK_COUNT      0x000F  // 低4位存储周围雷数 (0-8)
 
 class MinesweeperLogic {
     friend class DebugUI;
@@ -17,6 +17,8 @@ public:
     MinesweeperLogic();
     void SetLevel(int width, int height, int mines);
     void StartNewGame();
+    void SaveStateToConfig();
+    void LoadStateFromConfig();
 
     void RevealCell(int x, int y);
     void ToggleFlag(int x, int y);
@@ -55,7 +57,7 @@ private:
     int CountNeighborFlags(int x, int y) const; 
 
     int m_width, m_height, m_mines;
-    unsigned char m_board[2500]; // 静态内存池 (最大支持 50x50)
+    unsigned short m_board[2500]; // 静态内存池 (最大支持 50x50)
 
     GameStatus m_status;
     int m_flagsPlaced;

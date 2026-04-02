@@ -1,6 +1,9 @@
 #pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+#pragma comment(lib, "winmm.lib")
 #include "NetworkManager.h" // 必须放在第一行！
 #include <windows.h>
+#include <ctime>
+#include <mmsystem.h>
 #include <string>
 #include <algorithm>
 #include <vector>
@@ -28,38 +31,44 @@ DebugUI g_DebugUI;
 
 int g_Width = 0;
 int g_Height = 0;
+int g_ClientWidth = 0;
+int g_ClientHeight = 0;
 
 
 
 void UpdateSize() {
   
     g_Width = g_Logic.GetWidth() * CELL_SIZE + OFFSET_X + (int)(DARK_BOARD + FRAME_RIGHT_THICK);
-
     g_Height = g_Logic.GetHeight() * CELL_SIZE + OFFSET_Y + (int)(DARK_BOARD + FRAME_MIDDLE_BOTTOM_THICK);
+    
+    if (g_Config.windowScale < 0.2f || g_Config.windowScale > 5.0f) g_Config.windowScale = 1.0f;
+
+    g_ClientWidth = (int)(g_Width * g_Config.windowScale);
+    g_ClientHeight = (int)(g_Height * g_Config.windowScale);
 }
 
 void ChangeLevel(HWND hWnd, int w, int h, int mines) {
 
     g_Logic.SetLevel(w, h, mines);
 
-
     UpdateSize();
 
-
-    RECT rc = { 0, 0, g_Width, g_Height };
+    RECT rc = { 0, 0, g_ClientWidth, g_ClientHeight };
     AdjustWindowRect(&rc, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, TRUE);
 
-   
     SetWindowPos(hWnd, NULL, 0, 0, rc.right - rc.left, rc.bottom - rc.top, SWP_NOMOVE | SWP_NOZORDER);
 
-   
-    g_D3D.Resize(g_Width, g_Height); 
+    g_D3D.Resize(g_ClientWidth, g_ClientHeight); 
 }
 
 
 
 
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
+    SetProcessDPIAware();
+    timeBeginPeriod(1);
+    srand((unsigned int)time(nullptr));
+    
     LoadAppConfig(); // 尝试读取存档
     // 使用存档中的值初始化（如果没有存档则使用默认值）
     g_Width = g_Config.lastWidth;
@@ -67,6 +76,9 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
     int mines = g_Config.lastMines;
     
     g_Logic.SetLevel(g_Width, g_Height, mines);
+    if (g_Config.hasSavedGame) {
+        g_Logic.LoadStateFromConfig();
+    }
     UpdateSize();
     NetworkManager::Instance().Init();
     WNDCLASSEXW wcex = { sizeof(WNDCLASSEX) };
@@ -78,13 +90,13 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
     wcex.lpszClassName = L"MineSweepDX11";
     RegisterClassExW(&wcex);
 
-    RECT rc = { 0, 0, g_Width, g_Height };
+    RECT rc = { 0, 0, g_ClientWidth, g_ClientHeight };
    
-    AdjustWindowRect(&rc, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, TRUE);
+    AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, TRUE);
 
     HMENU hMenu = CreateAppMenu();
 
-    HWND hWnd = CreateWindowW(L"MineSweepDX11", L"MineSweepDX11", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+    HWND hWnd = CreateWindowW(L"MineSweepDX11", L"MineSweepDX11", WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, 0, rc.right - rc.left, rc.bottom - rc.top, nullptr, hMenu, hInstance, nullptr);
 
     if (!hWnd) return FALSE;
@@ -112,15 +124,18 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
         }
         else {
             g_D3D.Clear(0.753f, 0.753f, 0.753f, 1.0f); 
+            ImGui::GetIO().FontGlobalScale = g_Config.uiScale;
             ImGui_ImplDX11_NewFrame();
             ImGui_ImplWin32_NewFrame();
             ImGui::NewFrame();
             auto context = g_D3D.GetDeviceContext();
-			g_Renderer.Render(context, hWnd, g_Logic, g_Width, g_Height, g_Logic.GetWidth(), g_Logic.GetHeight());
+			g_Renderer.Render(context, hWnd, g_Logic, g_ClientWidth, g_ClientHeight, g_Width, g_Height, g_Logic.GetWidth(), g_Logic.GetHeight());
             //ImGui::ShowDemoWindow();
             if (g_DebugUI.IsVisible())
             {
-                g_DebugUI.Render(g_Logic, g_D3D, g_Renderer);
+                float scaleX = (float)g_ClientWidth / g_Width;
+                float scaleY = (float)g_ClientHeight / g_Height;
+                g_DebugUI.Render(g_Logic, g_D3D, g_Renderer, scaleX, scaleY);
             }
           
             ImGui::Render();
@@ -147,6 +162,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
         }
     }
 
+    timeEndPeriod(1);
     return (int)msg.wParam;
 }
 
@@ -186,7 +202,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     }
   
     switch (message) {
-   
+    case WM_SIZING: {
+        RECT* pRect = (RECT*)lParam;
+        int edge = (int)wParam;
+        float targetRatio = (float)g_Width / (float)g_Height;
+        int width = pRect->right - pRect->left;
+        int height = pRect->bottom - pRect->top;
+        if (edge == WMSZ_LEFT || edge == WMSZ_RIGHT || edge == WMSZ_BOTTOMLEFT || edge == WMSZ_TOPLEFT) {
+            height = (int)(width / targetRatio);
+            if (edge == WMSZ_TOPLEFT || edge == WMSZ_TOPRIGHT) pRect->top = pRect->bottom - height;
+            else pRect->bottom = pRect->top + height;
+        } else {
+            width = (int)(height * targetRatio);
+            if (edge == WMSZ_TOPLEFT || edge == WMSZ_LEFT || edge == WMSZ_BOTTOMLEFT) pRect->left = pRect->right - width;
+            else pRect->right = pRect->left + width;
+        }
+        return TRUE;
+    }
+    case WM_SIZE: {
+        if (wParam != SIZE_MINIMIZED && g_D3D.GetDevice() != nullptr) {
+            g_ClientWidth = LOWORD(lParam);
+            g_ClientHeight = HIWORD(lParam);
+            if (g_Width > 0 && wParam != SIZE_MAXIMIZED) {
+                g_Config.windowScale = (float)g_ClientWidth / (float)g_Width;
+            }
+            g_D3D.Resize(g_ClientWidth, g_ClientHeight);
+        }
+        break;
+    }
     case WM_CHAR: {
 		g_DebugUI.OnCharInput((wchar_t)wParam);
         break;
@@ -194,45 +237,50 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     case WM_KEYDOWN:
         if (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureKeyboard) break;
         if (g_DebugUI.HandleKey((int)wParam)) break;
+        
         if (wParam == VK_F2) {
             SendMessage(hWnd, WM_COMMAND, IDM_GAME_NEW, 0);
         }
-        else if (wParam == g_Config.keyUp) {
-            g_Logic.MoveSelection(0, -1);
-        }
-        else if (wParam == g_Config.keyDown) {
-            g_Logic.MoveSelection(0, 1);
-        }
-        else if (wParam == g_Config.keyLeft) {
-            g_Logic.MoveSelection(-1, 0);
-        }
-        else if (wParam == g_Config.keyRight) {
-            g_Logic.MoveSelection(1, 0);
-        }
-        else if (wParam == g_Config.keyReveal) {
-            if (g_Logic.GetStatus() == GameStatus::Playing) {
-                int selX = g_Logic.GetSelX();
-                int selY = g_Logic.GetSelY();
-                g_Logic.RevealCell(selX, selY);
-                if (g_Logic.GetStatus() == GameStatus::Lost) {
-                    PlayGameSound(SoundEvent::Explode);
-                }
-                else if (g_Logic.GetStatus() == GameStatus::Won) {
-                    PlayGameSound(SoundEvent::Win);
-                    CheckHighScore(hWnd);
+        else if (g_Config.enableKeyboard) {
+            if (wParam == g_Config.keyUp) {
+                g_Logic.MoveSelection(0, -1);
+            }
+            else if (wParam == g_Config.keyDown) {
+                g_Logic.MoveSelection(0, 1);
+            }
+            else if (wParam == g_Config.keyLeft) {
+                g_Logic.MoveSelection(-1, 0);
+            }
+            else if (wParam == g_Config.keyRight) {
+                g_Logic.MoveSelection(1, 0);
+            }
+            else if (wParam == g_Config.keyReveal) {
+                if (g_Logic.GetStatus() == GameStatus::Playing) {
+                    int selX = g_Logic.GetSelX();
+                    int selY = g_Logic.GetSelY();
+                    g_Logic.RevealCell(selX, selY);
+                    if (g_Logic.GetStatus() == GameStatus::Lost) {
+                        PlayGameSound(SoundEvent::Explode);
+                    }
+                    else if (g_Logic.GetStatus() == GameStatus::Won) {
+                        PlayGameSound(SoundEvent::Win);
+                        CheckHighScore(hWnd);
+                    }
                 }
             }
-        }
-        else if (wParam == g_Config.keyFlag) {
-            if (g_Logic.GetStatus() == GameStatus::Playing) {
-                g_Logic.ToggleFlag(g_Logic.GetSelX(), g_Logic.GetSelY());
+            else if (wParam == g_Config.keyFlag) {
+                if (g_Logic.GetStatus() == GameStatus::Playing) {
+                    g_Logic.ToggleFlag(g_Logic.GetSelX(), g_Logic.GetSelY());
+                }
             }
         }
         break;
     case WM_MOUSEMOVE: {
         if (g_Config.followMouse) {
-            int gridX = (LOWORD(lParam) - OFFSET_X) / CELL_SIZE;
-            int gridY = (HIWORD(lParam) - OFFSET_Y) / CELL_SIZE;
+            int mappedX = (int)(LOWORD(lParam) * ((float)g_Width / g_ClientWidth));
+            int mappedY = (int)(HIWORD(lParam) * ((float)g_Height / g_ClientHeight));
+            int gridX = (mappedX - OFFSET_X) / CELL_SIZE;
+            int gridY = (mappedY - OFFSET_Y) / CELL_SIZE;
             if (gridX >= 0 && gridX < g_Logic.GetWidth() && gridY >= 0 && gridY < g_Logic.GetHeight()) {
                 g_Logic.SetSelection(gridX, gridY);
             }
@@ -241,8 +289,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     }
     case WM_LBUTTONUP: {
         if (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureKeyboard) break;
-        int mouseX = LOWORD(lParam);
-        int mouseY = HIWORD(lParam);
+        int mouseX = (int)(LOWORD(lParam) * ((float)g_Width / g_ClientWidth));
+        int mouseY = (int)(HIWORD(lParam) * ((float)g_Height / g_ClientHeight));
         
         int gridX = (mouseX - OFFSET_X) / CELL_SIZE;
         int gridY = (mouseY - OFFSET_Y) / CELL_SIZE;
@@ -266,8 +314,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     }
     case WM_RBUTTONDOWN: {
         if (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureKeyboard) break;
-        int gridX = (LOWORD(lParam) - OFFSET_X) / CELL_SIZE;
-        int gridY = (HIWORD(lParam) - OFFSET_Y) / CELL_SIZE;
+        int mappedX = (int)(LOWORD(lParam) * ((float)g_Width / g_ClientWidth));
+        int mappedY = (int)(HIWORD(lParam) * ((float)g_Height / g_ClientHeight));
+        int gridX = (mappedX - OFFSET_X) / CELL_SIZE;
+        int gridY = (mappedY - OFFSET_Y) / CELL_SIZE;
         if (gridX >= 0 && gridX < g_Logic.GetWidth() && gridY >= 0 && gridY < g_Logic.GetHeight()) {
             g_Logic.ToggleFlag(gridX, gridY);
             
@@ -276,8 +326,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     }
     case WM_MBUTTONUP: {
         if (ImGui::GetCurrentContext() != nullptr && ImGui::GetIO().WantCaptureKeyboard) break;
-        int gridX = (LOWORD(lParam) - OFFSET_X) / CELL_SIZE;
-        int gridY = (HIWORD(lParam) - OFFSET_Y) / CELL_SIZE;
+        int mappedX = (int)(LOWORD(lParam) * ((float)g_Width / g_ClientWidth));
+        int mappedY = (int)(HIWORD(lParam) * ((float)g_Height / g_ClientHeight));
+        int gridX = (mappedX - OFFSET_X) / CELL_SIZE;
+        int gridY = (mappedY - OFFSET_Y) / CELL_SIZE;
         if (gridX >= 0 && gridX < g_Logic.GetWidth() && gridY >= 0 && gridY < g_Logic.GetHeight()) {
             if (g_Logic.GetStatus() == GameStatus::Playing) {
                 g_Logic.TryChord(gridX, gridY);
@@ -299,6 +351,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         g_Config.lastWidth = g_Logic.GetWidth();
         g_Config.lastHeight = g_Logic.GetHeight();
         g_Config.lastMines = g_Logic.GetTotalMines();
+
+        g_Logic.SaveStateToConfig();
 
         SaveAppConfig(); // 保存到磁盘
         PostQuitMessage(0);

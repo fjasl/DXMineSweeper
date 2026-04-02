@@ -13,6 +13,9 @@ struct GameConfig {
 
     // 3. 游戏偏好
     bool useMarks = true;
+    float uiScale = 1.0f;
+    float windowScale = 1.0f;
+    bool enableKeyboard = true;
 
     // 4. 按键设置
     int keyUp = 'K';
@@ -25,8 +28,13 @@ struct GameConfig {
     bool showSelBox = true;
     bool followMouse = true;
 
-    // (可选) 如果想保存进度，可以在这里增加棋盘数组
-    // unsigned char savedBoard[2500];
+    // 5. 进行中的游戏状态保存
+    bool hasSavedGame = false;
+    int savedSeconds = 0;
+    int savedFlagsPlaced = 0;
+    int savedCellsRevealed = 0;
+    int savedStatus = 0;
+    unsigned short savedBoard[2500];
 };
 
 // 全局配置实例声明

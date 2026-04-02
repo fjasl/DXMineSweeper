@@ -3,7 +3,7 @@
 #include "AppConfig.h"
 #include <windows.h>
 
-void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& renderer) {
+void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& renderer, float scaleX, float scaleY) {
   
     ImGui::SetNextWindowSize(ImVec2(400, 500), ImGuiCond_FirstUseEver);
 
@@ -53,7 +53,7 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
                     ImGui::InputInt("Inspect X", &inspectX);
                     ImGui::InputInt("Inspect Y", &inspectY);
                     if (inspectX >= 0 && inspectX < logic.GetWidth() && inspectY >= 0 && inspectY < logic.GetHeight()) {
-                        unsigned char rawVal = logic.m_board[inspectY * logic.m_width + inspectX];
+                        unsigned short rawVal = logic.m_board[inspectY * logic.m_width + inspectX];
                         ImGui::Text("Cell Memory Address: %p", &logic.m_board[inspectY * logic.m_width + inspectX]);
                         ImGui::Text("Raw Hex Value: 0x%02X", rawVal);
 
@@ -84,6 +84,14 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
                 static float clearColor[3] = { 0.753f, 0.753f, 0.753f };
                 if (ImGui::ColorEdit3("Clear Color", clearColor)) {
                     
+                }
+                ImGui::Separator();
+                ImGui::TextColored(ImVec4(1, 1, 0, 1), "UI Setting:");
+                if (ImGui::SliderFloat("Global UI Scale", &g_Config.uiScale, 0.5f, 3.0f)) {
+                    ImGui::GetIO().FontGlobalScale = g_Config.uiScale;
+                }
+                if (ImGui::IsItemDeactivatedAfterEdit()) {
+                    SaveAppConfig();
                 }
                 ImGui::Separator();
                 ImGui::TextColored(ImVec4(1, 1, 0, 1), "FPS Cap:");
@@ -158,10 +166,12 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
 
                 ImGui::Text("FPS: %.1f  (%.2f ms/frame)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
 
-                // 将鼠标屏幕坐标转换为棋盘格子坐标
+                // 将鼠标屏幕物理坐标按比例转换为逻辑棋盘格子坐标
                 ImVec2 mp = ImGui::GetMousePos();
-                int cellX = (int)(mp.x - OFFSET_X) / CELL_SIZE;
-                int cellY = (int)(mp.y - OFFSET_Y) / CELL_SIZE;
+                int mappedX = (int)(mp.x / scaleX);
+                int mappedY = (int)(mp.y / scaleY);
+                int cellX = (mappedX - OFFSET_X) / CELL_SIZE;
+                int cellY = (mappedY - OFFSET_Y) / CELL_SIZE;
 
                 bool inBoard = (cellX >= 0 && cellX < logic.GetWidth() &&
                                 cellY >= 0 && cellY < logic.GetHeight());
@@ -188,6 +198,8 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
             }
             if (ImGui::BeginTabItem("Controls")) {
                 auto& cfg = g_Config;
+                ImGui::Checkbox("Enable Keyboard Controls", &cfg.enableKeyboard);
+                ImGui::Separator();
                 const char* actions[] = { "Move Up", "Move Down", "Move Left", "Move Right", "Reveal", "Flag" };
                 int* keys[] = { &cfg.keyUp, &cfg.keyDown, &cfg.keyLeft, &cfg.keyRight, &cfg.keyReveal, &cfg.keyFlag };
 
@@ -248,10 +260,10 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
                
                 if (logic.IsMine(x, y) && !logic.IsRevealed(x, y)) {
                   
-                    float rect_x1 = (float)(OFFSET_X + x * CELL_SIZE);
-                    float rect_y1 = (float)(OFFSET_Y + y * CELL_SIZE);
-                    float rect_x2 = rect_x1 + CELL_SIZE;
-                    float rect_y2 = rect_y1 + CELL_SIZE;
+                    float rect_x1 = (float)(OFFSET_X + x * CELL_SIZE) * scaleX;
+                    float rect_y1 = (float)(OFFSET_Y + y * CELL_SIZE) * scaleY;
+                    float rect_x2 = (float)(OFFSET_X + x * CELL_SIZE + CELL_SIZE) * scaleX;
+                    float rect_y2 = (float)(OFFSET_Y + y * CELL_SIZE + CELL_SIZE) * scaleY;
                     drawList->AddRectFilled(
                         ImVec2(rect_x1 + 2, rect_y1 + 2),
                         ImVec2(rect_x2 - 2, rect_y2 - 2),
@@ -287,18 +299,31 @@ void DebugUI::Render(MinesweeperLogic& logic, D3DContext& d3d, GameRenderer& ren
             (int)(m_crossColor[0] * 255),
             (int)(m_crossColor[1] * 255),
             (int)(m_crossColor[2] * 255),
-            180
+            255 // Opaque
         );
-        float lineThickness = 1.0f;
+        ImU32 shadowColor = IM_COL32(0, 0, 0, 180); // Drop shadow
+        float lineThickness = 2.0f * g_Config.uiScale; // Thicker and scales with UI
 
-        
+        // Draw shadow first
+        drawList->AddLine(
+            ImVec2(0.0f, mousePos.y + 1.0f * g_Config.uiScale),
+            ImVec2(displaySize.x, mousePos.y + 1.0f * g_Config.uiScale),
+            shadowColor, lineThickness
+        );
+        drawList->AddLine(
+            ImVec2(mousePos.x + 1.0f * g_Config.uiScale, 0.0f),
+            ImVec2(mousePos.x + 1.0f * g_Config.uiScale, displaySize.y),
+            shadowColor, lineThickness
+        );
+
+        // Horizontal line
         drawList->AddLine(
             ImVec2(0.0f,          mousePos.y),
             ImVec2(displaySize.x, mousePos.y),
             lineColor, lineThickness
         );
 
-        // 垂直线：从屏幕最上到最下，X = 鼠标X
+        // Vertical line
         drawList->AddLine(
             ImVec2(mousePos.x, 0.0f),
             ImVec2(mousePos.x, displaySize.y),

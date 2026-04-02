@@ -17,7 +17,7 @@ public:
     SpriteBatch();
     bool Initialize(ID3D11Device* device);
     
-    void Begin(ID3D11DeviceContext* context, int screenWidth, int screenHeight);
+    void Begin(ID3D11DeviceContext* context, int viewportWidth, int viewportHeight, int logicalWidth, int logicalHeight);
     void Draw(ID3D11DeviceContext* context, ID3D11ShaderResourceView* srv, float x, float y, float w, float h, float srcX, float srcY, float srcW, float srcH);
     void End();
 

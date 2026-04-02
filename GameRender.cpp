@@ -96,30 +96,32 @@ void GameRenderer::DrawNumber(ID3D11DeviceContext* context, int num, int x, int 
 
 
 
-void GameRenderer::Render(ID3D11DeviceContext* context, HWND hWnd, MinesweeperLogic& logic, int width, int height,int boardW, int boardH) {
+void GameRenderer::Render(ID3D11DeviceContext* context, HWND hWnd, MinesweeperLogic& logic, int clientWidth, int clientHeight, int logicalWidth, int logicalHeight, int boardW, int boardH) {
 
-     
-        
         POINT pt; GetCursorPos(&pt); ScreenToClient(hWnd, &pt);
+        // Inverse coordinate mapping for mouse over logic
+        float scaleX = (float)clientWidth / (float)logicalWidth;
+        float scaleY = (float)clientHeight / (float)logicalHeight;
+        int mappedMouseX = (int)(pt.x / scaleX);
+        int mappedMouseY = (int)(pt.y / scaleY);
        
-        int mouseGridX = (pt.x - OFFSET_X) / CELL_SIZE;
-        int mouseGridY = (pt.y - OFFSET_Y) / CELL_SIZE;
+        int mouseGridX = (mappedMouseX - OFFSET_X) / CELL_SIZE;
+        int mouseGridY = (mappedMouseY - OFFSET_Y) / CELL_SIZE;
         
         bool isLDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000);
         bool isMDown = (GetAsyncKeyState(VK_MBUTTON) & 0x8000);
 
-        
-         m_Sprites.Begin(context, width, height);
+         m_Sprites.Begin(context, clientWidth, clientHeight, logicalWidth, logicalHeight);
   
 
         
-         DrawBaseFrame(context,width,height,boardW,boardH);
+         DrawBaseFrame(context, logicalWidth, logicalHeight, boardW, boardH);
 
    
          float hudX_draw = LIGHT_BOARD + FRAME_LEFT_THICK;
          float hudY_draw = LIGHT_BOARD + DARK_BOARD + FRAME_MIDDLE_TOP_THICK;
          DrawNumber(context, logic.GetMinesLeft(), (int)(hudX_draw + 5), (int)(hudY_draw + 5));
-         DrawNumber(context, logic.GetTime(), (int)(width - hudX_draw - LED_W * 3 - 5), (int)(hudY_draw + 5));
+         DrawNumber(context, logic.GetTime(), (int)(logicalWidth - hudX_draw - LED_W * 3 - 5), (int)(hudY_draw + 5));
 
          // 2. Draw Face
          int faceIdx = 4;
@@ -128,13 +130,13 @@ void GameRenderer::Render(ID3D11DeviceContext* context, HWND hWnd, MinesweeperLo
          else if (GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
              // Determine if mouse is over the grid or the face
              POINT pt; GetCursorPos(&pt); ScreenToClient(hWnd, &pt);
-             int faceX = width / 2 - 12;
-             if (pt.x >= faceX && pt.x < faceX + 24 && pt.y >= 15 && pt.y < 15 + 24)
+             int faceX = logicalWidth / 2 - 12;
+             if (mappedMouseX >= faceX && mappedMouseX < faceX + 24 && mappedMouseY >= 15 && mappedMouseY < 15 + 24)
                  faceIdx = 0; // Pushed
              else
                  faceIdx = 3; // Surprise
          }
-         m_Sprites.Draw(context, m_TexButton.srv.Get(), (float)(width / 2 - 12), 15.0f, 24.0f, 24.0f, 0.0f, (float)(faceIdx * 24), 24.0f, 24.0f);
+         m_Sprites.Draw(context, m_TexButton.srv.Get(), (float)(logicalWidth / 2 - 12), 15.0f, 24.0f, 24.0f, 0.0f, (float)(faceIdx * 24), 24.0f, 24.0f);
 
          // 3. Draw Grid
          for (int y = 0; y < logic.GetHeight(); ++y) {
@@ -212,13 +214,16 @@ void GameRenderer::Render(ID3D11DeviceContext* context, HWND hWnd, MinesweeperLo
                   255
               );
               
+              float scaleX = (float)clientWidth / (float)logicalWidth;
+              float scaleY = (float)clientHeight / (float)logicalHeight;
+              
               drawList->AddRect(
-                  ImVec2(drawX, drawY),
-                  ImVec2(drawX + CELL_SIZE, drawY + CELL_SIZE),
+                  ImVec2(drawX * scaleX, drawY * scaleY),
+                  ImVec2((drawX + CELL_SIZE) * scaleX, (drawY + CELL_SIZE) * scaleY),
                   col,
                   0.0f,
                   0,
-                  2.0f // 2px thickness
+                  2.0f * scaleX // 2px thickness scaled
               );
           }
 
